@@ -16,9 +16,10 @@ box-sizing:border-box}
 :root{--bg:#10171d;--card:#2b2b2b;--ink:#ffffff;--mute:#ffffff;--line:#111111;--acc:#5b96f0;--accink:#0b1520;--ok:#4cc38a;--cardshadow:none;--accglow:rgba(91,150,240,.3);--textshadow:1px 1px 1px rgba(255,255,255,.25);--textshadowcard:2px 2px 1px rgba(10,8,6,.9)}
 :root #view-launcher,:root #view-cycle{--bg:#111111;--card:#2b2b2b;--ink:#ffffff;--mute:#ffffff;--line:#3a3a3a;--acc:#e0c9a0;--accink:#2b2b2b;--ok:#c9a876;--cardshadow:none;--accglow:rgba(224,201,160,.35);--textshadow:1px 1px 1px rgba(255,255,255,.25);--textshadowcard:2px 2px 1px rgba(10,8,6,.9)}
 *{box-sizing:border-box}
-html{scroll-padding-top:env(safe-area-inset-top,0px);background:var(--bg);overscroll-behavior-y:none}
+html{scroll-padding-top:env(safe-area-inset-top,0px);background:#111111;overscroll-behavior-y:none}
 body{margin:0;min-height:100dvh;background:var(--bg);color:var(--ink);font:16px/1.4 "Inter","Segoe UI",system-ui,sans-serif;-webkit-text-size-adjust:100%;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;overscroll-behavior-y:none}
-:root body{background:radial-gradient(circle at 0% 0%,rgba(255,255,255,.17),transparent 24vmin),radial-gradient(circle at 100% 0%,rgba(255,255,255,.17),transparent 24vmin),radial-gradient(circle at 0% 100%,rgba(255,255,255,.12),transparent 18vmin),radial-gradient(circle at 100% 100%,rgba(255,255,255,.12),transparent 18vmin),#111111;text-shadow:var(--textshadow)}
+:root body{background:transparent;text-shadow:var(--textshadow)}
+body::before{content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;background:radial-gradient(circle at 0% 0%,rgba(255,255,255,.17),transparent 24vmin),radial-gradient(circle at 100% 0%,rgba(255,255,255,.17),transparent 24vmin),radial-gradient(circle at 0% 100%,rgba(255,255,255,.12),transparent 18vmin),radial-gradient(circle at 100% 100%,rgba(255,255,255,.12),transparent 18vmin)}
 input{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
 main.daylog{max-width:560px;margin:0 auto;padding:16px 14px 40px;padding-top:calc(16px + env(safe-area-inset-top,0px))}
 h1{font-size:22px;margin:4px 0 12px;letter-spacing:-.01em;text-align:center;text-shadow:var(--textshadow)}
@@ -825,6 +826,18 @@ document.querySelectorAll("details.dynwarm").forEach(function(d){
   document.getElementById("csgo").addEventListener("click",function(){if(!inp.value)return;
     CYCLE_START=inp.value;try{localStorage.setItem("cycle.start",JSON.stringify(CYCLE_START));localStorage.setItem("cycle.miss","[]")}catch(e){}
     ov.classList.remove("on");renderCycleDay();});
+})();
+</script>
+<script>
+(function(){
+  var sy=0;
+  document.addEventListener("touchstart",function(e){if(e.touches.length===1)sy=e.touches[0].clientY},{passive:true});
+  document.addEventListener("touchmove",function(e){
+    if(e.touches.length!==1)return;
+    var dy=e.touches[0].clientY-sy,el=document.scrollingElement||document.documentElement;
+    var top=el.scrollTop<=0,bot=el.scrollTop+window.innerHeight>=el.scrollHeight-1;
+    if((top&&dy>0)||(bot&&dy<0)){if(e.cancelable)e.preventDefault()}
+  },{passive:false});
 })();
 </script>
 </body>
