@@ -38,9 +38,25 @@ input:focus{outline:2px solid var(--acc);outline-offset:1px}
 .ex h2{font-size:16px;margin:0;font-weight:650;text-shadow:var(--textshadowcard)}
 .ex .t{font-size:13px;color:var(--mute);margin:2px 0 8px;text-shadow:var(--textshadowcard)}
 .row{display:grid;grid-template-columns:28px 1fr 1fr;gap:6px;align-items:center;margin-bottom:6px}
+.row.h .rirx{opacity:.35}
+.m2{display:flex;align-items:center;justify-content:center;gap:10px;font-size:9px;font-weight:600;letter-spacing:.45em;padding-left:.45em;opacity:.55;margin-top:9px;text-transform:uppercase}
+.m2::before,.m2::after{content:"";width:22px;height:1px;background:currentColor;opacity:.6}
+.daylog h1 .m2{color:var(--acc);opacity:.75}
+.dltom{display:block;margin-top:8px;font-size:10px;letter-spacing:.2em;opacity:.5}
+.hist summary.dls{display:flex;align-items:baseline}
+.dlemb{margin-left:auto;margin-right:4px;flex:none;align-self:center;display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border:1.3px solid var(--acc);border-radius:50%;color:var(--acc);opacity:.75;font:700 10px system-ui}
+.dlbase{margin-left:10px;font-weight:500;opacity:.3;text-decoration:line-through}
+.rirx-cell{align-self:stretch;min-height:40px;border-radius:10px;border:1px dashed rgba(255,255,255,.12);display:flex;align-items:center;justify-content:center;color:var(--mute);opacity:.6}
 .row.h{font-size:12px;color:var(--mute);margin-bottom:2px}
 .row.h span{text-align:center}
 .hint{font-size:13px;color:var(--acc);margin:0 0 8px;font-weight:600}
+.dlnote{text-align:center;font-size:12px;color:var(--mute);letter-spacing:.04em;margin:6px 0 0;text-shadow:var(--textshadow)}
+.dlnote .pips{display:inline-flex;gap:7px;align-items:center;margin-top:8px}
+.dlnote .pips i{width:7px;height:7px;border-radius:50%;background:var(--r-acc);opacity:.18}
+.dlnote .pips i.d{opacity:.75}
+.dlnote .pips i.c{opacity:1;box-shadow:0 0 8px var(--r-acc);transform:scale(1.25)}
+.dlnote.on{color:var(--acc);font-weight:700;letter-spacing:.3em;font-size:13px}
+.dltag{display:inline-block;margin-left:8px;font-size:10px;font-weight:700;letter-spacing:.15em;color:var(--acc);border:1px solid var(--acc);border-radius:6px;padding:1px 5px;vertical-align:2px;opacity:.85}
 .warm{font-size:12px;color:var(--mute);margin:0 0 8px}
 .wr{display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:14px;color:var(--mute);margin:6px 0 10px}
 .wr input{width:110px}
@@ -204,6 +220,7 @@ details.hist[open]>summary::before{transform:rotate(90deg)}
 <div class="cbar"><button class="day ready cbtn" data-miss="1">Tegnap</button><button class="day ready cbtn" data-miss="0">Ma</button></div>
 <div class="ring" id="cring"></div>
 <div class="rdate" id="cdate"></div>
+<div class="dlnote" id="cdl"></div>
 </main>
 
 <main class="daylog" id="view-push" data-key="push" style="display:none">
@@ -344,25 +361,41 @@ function dayIdx(iso){var p=iso.split("-"),s=CYCLE_START.split("-");return Math.r
 function isoAt(i){var s=CYCLE_START.split("-");return isoOf(new Date(+s[0],+s[1]-1,+s[2]+i))}
 function plan(upto){
   var miss={};ld(MK(),[]).forEach(function(m){miss[dayIdx(m)]=1});
-  var res=[],queue=[],cm=0;
+  var res=[],queue=[],qc=[],cm=0;res.cy={};
   for(var i=0;i<=upto;i++){
     var slot=i%9;
-    if(slot===0){cm=queue.length;queue=queue.concat(SESS);
+    if(slot===0){cm=queue.length;queue=queue.concat(SESS);for(var c7=0;c7<SESS.length;c7++)qc.push(Math.floor(i/9));
       /* ha 2 edzés csúszott át, ebben a ciklusban a Z2 rögtön a második Pull végére kerül */
-      if(cm>=2&&queue.indexOf("Pull+Z2")<0){var z0=queue.indexOf("Zone 2"),p0=z0<0?-1:queue.indexOf("Pull",z0);if(p0>=0){queue.splice(z0,1);queue[p0-1]="Pull+Z2"}}}
+      if(cm>=2&&queue.indexOf("Pull+Z2")<0){var z0=queue.indexOf("Zone 2"),p0=z0<0?-1:queue.indexOf("Pull",z0);if(p0>=0){queue.splice(z0,1);qc.splice(z0,1);queue[p0-1]="Pull+Z2"}}}
     if(miss[i]){
       res.push("K");(res.kn=res.kn||{})[i]=queue[0];cm++;
       /* vésztartalék: 3. kiesésnél, vagy ha különben átcsúszna valami a következő ciklusba */
-      if((cm>=3||queue.length>8-slot)&&queue.indexOf("Pull+Z2")<0){var z=queue.indexOf("Zone 2"),pl=z<0?-1:queue.indexOf("Pull",z);if(pl>=0){queue.splice(z,1);queue[pl-1]="Pull+Z2"}}
+      if((cm>=3||queue.length>8-slot)&&queue.indexOf("Pull+Z2")<0){var z=queue.indexOf("Zone 2"),pl=z<0?-1:queue.indexOf("Pull",z);if(pl>=0){queue.splice(z,1);qc.splice(z,1);queue[pl-1]="Pull+Z2"}}
       continue;
     }
     var left=0;for(var k=slot+1;k<9;k++)if(SLOT[k]!==null)left++;
-    if(SLOT[slot]!==null||queue.length>left)res.push(queue.length?queue.shift():null);else res.push(null);
+    if(SLOT[slot]!==null||queue.length>left){if(queue.length){res.cy[i]=qc.shift();res.push(queue.shift())}else res.push(null)}else res.push(null);
   }
   return res;
 }
 var TEST=null;function MK(){return TEST?"cycle.miss.test":"cycle.miss"}
 function todayIdx(){return TEST?TEST.day:(CYCLE_START?dayIdx(today()):-1)}
+/* Deload: 10 normál ciklus után a 11. (11., 22., 33. ...), dátumhoz kötve */
+/* egy edzés akkor deload, ha a deload ciklusból származik – ha átcsúszik, viszi magával */
+function isDeload(iso,type){if(!CYCLE_START||!iso)return false;var d=dayIdx(iso);if(d<0)return false;
+  var r=plan(d+9),m=function(v){return v===type||(type==="Pull"&&v==="Pull+Z2")},DL=function(k){return r.cy[k]%11===10};
+  if(m(r[d]))return DL(d);
+  /* ha nem ennek a napja: ahol most tartasz a sorban (mai edzés, pihenőnapon az előző) */
+  for(var k=d;k>=Math.max(0,d-9);k--)if(r.cy[k]!=null)return DL(k);
+  return Math.floor(d/9)%11===10}
+/* "now": a mai edzés deload (pihenőnapon: előtte és utána is deload jön); "tom": holnap kezdődik */
+function dlState(t){if(t<0)return "";var r=plan(t+18),D=function(k){return r.cy[k]!=null&&r.cy[k]%11===10},nx=null,pv=null;
+  for(var q=t;q<r.length;q++)if(r.cy[q]!=null){nx=q;break}
+  for(var q=t-1;q>=0;q--)if(r.cy[q]!=null){pv=q;break}
+  if(r.cy[t]!=null){if(D(t))return "now"}else if(nx!=null&&D(nx)&&pv!=null&&D(pv))return "now";
+  return D(t+1)?"tom":""}
+function deloadIn(){var t=todayIdx();if(t<0)return -1;return 10-Math.floor(t/9)%11}
+function dl75(w){w=parseFloat(String(w||"").replace(",","."));if(!w)return "";return String(Math.max(0.5,Math.round(w*0.75*2)/2))}
 function renderCycleDay(){
   var el=document.getElementById("footnote");if(!el)return;
   var t=todayIdx();
@@ -370,6 +403,10 @@ function renderCycleDay(){
   el.classList.remove("idle");
   var v=plan(t)[t];
   el.textContent=v==="K"||v===null?"Rest":v==="Pull+Z2"?"Pull + Z2":v;
+  /* deload jelzés: ma deload van, vagy holnap kezdődik */
+  var ds=dlState(t),dlNow=ds==="now",dlTom=ds==="tom";
+  if(dlNow)el.insertAdjacentHTML("beforeend",'<span class="m2">DELOAD</span>');
+  else if(dlTom)el.insertAdjacentHTML("beforeend",'<span class="dltom">Holnaptól deload</span>');
   var rr=plan(t+20),off=false;for(var j=t;j<rr.length;j++)if(rr[j]!==SLOT[j%9]){off=true;break}
   el.classList.toggle("warn",off);
 }
@@ -400,7 +437,8 @@ function renderCycleView(){
   for(var i=r.length-1;i>=0;i--)sl[i]=sp[i]?(i+1<r.length&&sp[i+1]?sl[i+1]:sp[i]):0;
   var stc=function(n){return n>=10?"st3":n>=8?"st2":"st1"},smax=0,lim=base+(any?18:9);
   var stOn=function(i){return sl[i]>4&&i-sp[i]+sl[i]>=t};
-  for(var i=base;i<lim;i++)if(stOn(i))smax=Math.max(smax,sl[i]);
+  /* visszaszámol: ha ma benne vagy a sorozatban, a még hátralévő edzéseket mutatja (a maival együtt) */
+  var inRun=false,stot=0;for(var i=base;i<lim;i++)if(stOn(i)){var rs=i-sp[i]+1,re=i-sp[i]+sl[i];if(rs<=t){if(!inRun){inRun=true;smax=re-t+1;stot=sl[i]}}else if(!inRun){smax=Math.max(smax,sl[i]);stot=smax}}
   var A=!!(window.ANIM&&window.PREV&&PREV.base===base),IN=!!window.INTRO;var pL=window.PREV?PREV.left:0;window.ANIM=false;window.INTRO=false;
   var keyOf=function(i){return r[i]==="K"?"K:"+r.kn[i]:String(r[i])},cur={};
   var wrap=function(html,ki){cur[ki]=keyOf(ki);if(IN)return '<g class="in" style="animation-delay:'+(((ki-base)%9)*90+(ki>=base+9?120:0))+'ms">'+html+'</g>';if(!A)return html;var o=PREV.k[ki],n=cur[ki];if(o===n)return html;
@@ -420,17 +458,18 @@ function renderCycleView(){
   var F=' font-family="system-ui,sans-serif"',top=(t%9+1)+". NAP",tc="var(--r-acc)";
   var big=calm?hn:left+'<tspan font-size="15" font-weight="600" fill-opacity=".55" dx="4">nap</tspan>',bs=calm?(hn.length>6?24:30):44;
   s+='<defs><radialGradient id="cg" cx="50%" cy="40%" r="60%"><stop offset="0" style="stop-color:var(--r-acc)" stop-opacity=".16"/><stop offset="1" style="stop-color:var(--r-acc)" stop-opacity="0"/></radialGradient></defs><circle cx="150" cy="150" r="70" fill="url(#cg)"/>';
-  if(calm)s+='<text x="150" y="132" text-anchor="middle" font-size="8.5" style="fill:'+tc+'" letter-spacing="1.8"'+F+'>'+top+'</text>';
+  if(calm)s+='<text x="150" y="'+(smax?112:132)+'" text-anchor="middle" font-size="8.5" style="fill:'+tc+'" letter-spacing="1.8"'+F+'>'+top+'</text>';
   var ny=smax?150:calm?170:165,roll=A&&!calm&&!PREV.calm&&PREV.left!==left;
   if(roll)s+='<text x="150" y="'+PREV.ny+'" text-anchor="middle" font-size="44" font-weight="700" class="ink nOut '+(left>PREV.left?"up":"dn")+'"'+F+'>'+PREV.left+'<tspan font-size="15" font-weight="600" fill-opacity=".55" dx="4">nap</tspan></text>';
   s+='<text x="150" y="'+ny+'" text-anchor="middle" font-size="'+bs+'" font-weight="700" class="ink'+(roll?' nIn '+(left>PREV.left?"up":"dn"):'')+'"'+F+'>'+big+'</text>';
   if(smax){var st=smax+" EDZÉS",pw=st.length*7.6+22;
-    s+=(A&&!PREV.smax?'<g class="pop">':'<g>')+'<rect x="'+(150-pw/2)+'" y="162" width="'+pw+'" height="20" rx="10" class="'+stc(smax)+'" fill-opacity=".2"/><text x="150" y="176" text-anchor="middle" font-size="10" font-weight="700" class="'+stc(smax)+'" letter-spacing="1.2"'+F+'>'+st+'</text></g>'}
+    s+=(A&&!PREV.smax?'<g class="pop">':'<g>')+'<rect x="'+(150-pw/2)+'" y="162" width="'+pw+'" height="20" rx="10" class="'+stc(stot)+'" fill-opacity=".2"/><text x="150" y="176" text-anchor="middle" font-size="10" font-weight="700" class="'+stc(stot)+'" letter-spacing="1.2"'+F+'>'+st+'</text></g>'}
   window.PREV={base:base,k:cur,left:left,calm:calm,smax:smax,ny:ny};
   var box=document.getElementById("cring");if(!IN)box.classList.remove("cin");
   box.innerHTML='<svg viewBox="0 0 300 300" role="img" aria-label="A ciklus napjai körben">'+s+'</svg>';
   var cdEl=document.getElementById("cdate"),cdT=calm?shortDate(t):shortDate(t)+"  →  "+shortDate(norm);
   cdEl.textContent=cdT;
+  var dn=document.getElementById("cdl"),di=deloadIn();if(di>=0){var rq=plan(t+18);if(dlState(t)==="now")di=0;else{var nq=-1;for(var q=t;q<rq.length;q++)if(rq.cy[q]!=null){nq=q;break}if(nq>=0&&rq.cy[nq]%11!==10)di=10-rq.cy[nq]%11;else for(var q=t;q>=0;q--)if(rq.cy[q]!=null&&rq.cy[q]%11!==10){di=10-rq.cy[q]%11;break}}}if(dn){dn.classList.toggle("on",di===0);if(di<0)dn.innerHTML="";else if(di===0)dn.textContent="DELOAD";else{var pos=10-di,ph="";for(var k=0;k<10;k++)ph+='<i class="'+(k<pos?"d":k===pos?"c":"")+'"></i>';dn.innerHTML='<span class="pips">'+ph+'</span>'}}
   document.querySelectorAll("#view-cycle .cbtn").forEach(function(b){var i=t-(+b.dataset.miss),v=i<0?null:plan(i)[i],nm=+b.dataset.miss?"Tegnap":"Ma";b.classList.toggle("off",i<0||v===null);b.classList.toggle("missed",v==="K");b.textContent=nm});
 }
 (function(){
@@ -460,6 +499,7 @@ function renderCycleView(){
       window.ANIM=true;renderCycleView();renderCycleDay();
     }
     btn.addEventListener("contextmenu",function(e){e.preventDefault()});
+    btn.addEventListener("animationend",function(e){if(e.animationName==="cshake")btn.classList.remove("shake")});
     btn.addEventListener("touchstart",function(e){e.preventDefault()},{passive:false});
     btn.addEventListener("pointerdown",function(e){
       e.preventDefault();disarm();try{btn.setPointerCapture(e.pointerId)}catch(x){}
@@ -473,6 +513,7 @@ function renderCycleView(){
         var carry=Math.max(0,cyc*7-done);
         if(carry+list.filter(function(m){return Math.floor(dayIdx(m)/9)===cyc}).length>=3){btn.classList.remove("shake");void btn.offsetWidth;btn.classList.add("shake");if(navigator.vibrate)navigator.vibrate(120);return}
       }
+      btn.classList.remove("shake");
       pre=setTimeout(function(){pre=null;btn.classList.add(v==="K"?"clearing":"arming");
         arm=setTimeout(function(){arm=null;btn.classList.remove("arming","clearing");act()},3000)},500);
     });
@@ -530,7 +571,9 @@ function fmt(d){var p=d.split("-");return p.length==3?p[0]+". "+p[1]+". "+p[2]+"
 function initTracker(root,cfg){
   var EX=cfg.EX,WU=cfg.WU||{},DK=cfg.prefix+".draft",HK=cfg.prefix+".hist";
   var hist=ld(HK,[]),draft=ld(DK,{});
-  var last=hist.length?hist[hist.length-1]:null;
+  function lastReal(){for(var k=hist.length-1;k>=0;k--)if(!hist[k].dl)return hist[k];return null}
+  var last=lastReal(),DL=false;
+  function nSets(i){return DL?Math.max(1,EX[i][1]-1):EX[i][1]}
   function $(role){return root.querySelector('[data-role="'+role+'"]')}
   var msgTimer=null;
   function showMsg(text,cls,autoHide){
@@ -549,7 +592,7 @@ function initTracker(root,cfg){
   }
   function warmupText(i){
     var wcfg=WU[i];if(!wcfg||!last)return "";
-    var wStr=(last.w||{})[i];
+    var wStr=DL?dl75((last.w||{})[i]):(last.w||{})[i];
     var w=parseFloat(String(wStr||"").replace(",","."));
     var hasPct=wcfg.some(function(s){return typeof s[0]==="number"});
     if(hasPct&&!w)return "";
@@ -571,17 +614,20 @@ function initTracker(root,cfg){
     return "Kész a "+w+" kg. Emelhetsz.";
   }
   function build(){
+    DL=isDeload($("date").value,cfg.type);
+    var h1=root.querySelector("h1"),mk=h1.querySelector(".m2");if(DL&&!mk)h1.insertAdjacentHTML("beforeend",'<span class="m2">Deload</span>');else if(!DL&&mk)mk.remove();
     var h="";
     EX.forEach(function(e,i){
-      var hi=hint(i),wu=warmupText(i);
-      h+='<section class="ex"><h2>'+e[0]+'</h2><div class="t">'+e[1]+' × '+e[2]+'</div>'+(hi?'<div class="hint">'+hi+'</div>':'')+(wu?'<div class="warm">'+wu+'</div>':'')
-        +'<label class="wr">Súly (kg)<input inputmode="decimal" autocomplete="off" autocorrect="off" spellcheck="false" data-num="dec" data-ex="'+i+'" value="'+((draft.w||{})[i]||prefillWeight(i))+'"></label>'
-        +'<div class="row h"><span></span><span>Ismétlés</span><span>RIR</span></div>';
-      for(var s=0;s<e[1];s++){
+      var lw=last?(last.w||{})[i]:"",dw=DL?dl75(lw):"";
+      var hi=DL?(dw?"Deload – 75%: "+dw+" kg<span class=\"dlbase\">"+lw+" kg</span>":"Deload – 75% súly"):hint(i),wu=warmupText(i);
+      h+='<section class="ex"><h2>'+e[0]+'</h2><div class="t">'+nSets(i)+' × '+e[2]+'</div>'+(hi?'<div class="hint">'+hi+'</div>':'')+(wu?'<div class="warm">'+wu+'</div>':'')
+        +'<label class="wr">Súly (kg)<input inputmode="decimal" autocomplete="off" autocorrect="off" spellcheck="false" data-num="dec" data-ex="'+i+'" value="'+((draft.w||{})[i]||(DL?dw:prefillWeight(i)))+'"></label>'
+        +'<div class="row h"><span></span><span>Ismétlés</span><span'+(DL?' class="rirx"':'')+'>RIR</span></div>';
+      for(var s=0;s<nSets(i);s++){
         var k=i+"-"+s,v=(draft.s||{})[k]||{};
         h+='<div class="row" data-k="'+k+'" data-ex="'+i+'"><span class="n">'+(s+1)+'</span>'
           +'<input inputmode="numeric" autocomplete="off" autocorrect="off" spellcheck="false" data-num="int" data-f="r" value="'+(v.r||"")+'">'
-          +'<input inputmode="numeric" autocomplete="off" autocorrect="off" spellcheck="false" data-num="int" data-f="i" value="'+(v.i||"")+'"></div>';
+          +(DL?'<div class="rirx-cell">–</div>':'<input inputmode="numeric" autocomplete="off" autocorrect="off" spellcheck="false" data-num="int" data-f="i" value="'+(v.i||"")+'">')+'</div>';
       }
       h+='</section>';
     });
@@ -595,7 +641,7 @@ function initTracker(root,cfg){
       if(x.r||x.i)o.s[k]=x;
     });return o;
   }
-  function mark(){root.querySelectorAll(".row[data-k]").forEach(function(r){var a=r.querySelectorAll("input"),w=root.querySelector('.wr input[data-ex="'+r.dataset.ex+'"]');r.classList.toggle("done",!!(a[0].value&&a[1].value&&w&&w.value))})}
+  function mark(){root.querySelectorAll(".row[data-k]").forEach(function(r){var a=r.querySelectorAll("input"),w=root.querySelector('.wr input[data-ex="'+r.dataset.ex+'"]');r.classList.toggle("done",!!(a[0].value&&(!a[1]||a[1].value)&&w&&w.value))})}
   function updateDurSum(){$("dursum").textContent=$("dur").value?$("dur").value+" perc":"—"}
   function validate(){
     var miss=[],els=[];
@@ -607,11 +653,11 @@ function initTracker(root,cfg){
       var bad=false;
       var wEl=root.querySelector('.wr input[data-ex="'+i+'"]');
       if(!wEl.value.trim()){els.push(wEl);bad=true}
-      for(var s=0;s<e[1];s++){
+      for(var s=0;s<nSets(i);s++){
         var row=root.querySelector('.row[data-k="'+i+'-'+s+'"]');
         var rEl=row.querySelector('input[data-f="r"]'),iEl=row.querySelector('input[data-f="i"]');
         if(!rEl.value.trim()){els.push(rEl);bad=true}
-        if(!iEl.value.trim()){els.push(iEl);bad=true}
+        if(iEl&&!iEl.value.trim()){els.push(iEl);bad=true}
       }
       if(bad)miss.push(e[0]);
     });
@@ -642,7 +688,7 @@ function initTracker(root,cfg){
       var idx=hist.findIndex(function(h){return h.date===date});
       if(idx<0)return;
       hist=hist.filter(function(h){return h.date!==date});
-      sv(HK,hist);last=hist.length?hist[hist.length-1]:null;
+      sv(HK,hist);last=lastReal();
       stale=true;renderHist();renderLauncherSubs();
     },820);
   }
@@ -654,7 +700,7 @@ function initTracker(root,cfg){
         var sets=[];for(var s=0;s<e[1];s++){var x=h.s[i+"-"+s];if(x)sets.push((x.w||"–")+" kg × "+(x.r||"–")+(x.i?" (RIR "+x.i+")":""))}
         return sets.length?"<p><b>"+e[0]+"</b>"+sets.join("<br>")+"</p>":"";
       }).join("");
-      return '<div class="histitem" data-date="'+h.date+'"><details class="hist"><summary>'+fmt(h.date)+'<small>'+(h.dur?h.dur+" perc":"")+(h.st&&h.en?" ("+h.st+"–"+h.en+")":"")+'</small></summary>'+body+'</details></div>';
+      return '<div class="histitem" data-date="'+h.date+'"><details class="hist"><summary'+(h.dl?' class="dls"':'')+'>'+fmt(h.date)+'<small>'+(h.dur?h.dur+" perc":"")+(h.st&&h.en?" ("+h.st+"–"+h.en+")":"")+'</small>'+(h.dl?'<span class="dlemb">D</span>':'')+'</summary>'+body+'</details></div>';
     }).join("");
     histEl.querySelectorAll(".histitem").forEach(function(item){
       var date=item.dataset.date,summary=item.querySelector("summary"),trigger=summary;
@@ -708,6 +754,7 @@ function initTracker(root,cfg){
       if(clean2!==ev.target.value)ev.target.value=clean2;
     }
     var role=ev.target.dataset.role;
+    if(role==="date"&&isDeload(ev.target.value,cfg.type)!==DL){draft=collect();draft.w={};sv(DK,draft);build()}
     if(role==="st"||role==="en"){var a=$("st").value,b=$("en").value;if(a&&b){var m=(+b.slice(0,2)*60+ +b.slice(3))-(+a.slice(0,2)*60+ +a.slice(3));if(m<0)m+=1440;$("dur").value=m}else{$("dur").value=""}updateDurSum()}
     draft=collect();sv(DK,draft);mark();
   });
@@ -721,10 +768,10 @@ function initTracker(root,cfg){
     root.querySelectorAll(".invalid").forEach(function(n){n.classList.remove("invalid")});
     var v=validate();
     if(v.miss.length){v.els.forEach(function(n){n.classList.add("invalid")});showMsg("Még nincs kitöltve: "+v.miss.join(", "),"bad",false);return}
-    var o=collect();
+    var o=collect();if(isDeload(o.date,cfg.type))o.dl=1;
     hist=hist.filter(function(h){return h.date!==o.date});hist.push(o);hist.sort(function(a,b){return a.date<b.date?-1:1});
     if(hist.length>5)hist=hist.slice(hist.length-5);
-    sv(HK,hist);last=hist[hist.length-1];
+    sv(HK,hist);last=lastReal();
     stale=true;renderHist();renderLauncherSubs();
     var sb=$("save");sb.classList.remove("svfl");void sb.offsetWidth;sb.classList.add("svfl");
     showMsg("Mentve.","good",true);
@@ -767,22 +814,22 @@ function initTracker(root,cfg){
   build();renderHist();
   var stale=false;
   function dateToToday(){if($("date").value&&$("date").value<today()){$("date").value=today();if(draft&&draft.date){draft.date=today();sv(DK,draft)}}}
-  root.enterView=function(){dateToToday();if(stale){stale=false;build()}fillTimeIfEmpty()};
+  root.enterView=function(){dateToToday();if(stale||isDeload($("date").value,cfg.type)!==DL){if(isDeload($("date").value,cfg.type)!==DL&&draft){draft.w={};sv(DK,draft)}stale=false;build()}fillTimeIfEmpty()};
   document.addEventListener("visibilitychange",function(){if(!document.hidden&&root.style.display==="block")dateToToday()});
 }
 
 initTracker(document.getElementById("view-push"),{
-  prefix:"pushlog",
+  prefix:"pushlog",type:"Push",
   EX:[["Fekvenyomás sík padon rúddal",3,"6–10",3],["Ferdepados kézisúlyzós nyomás (30°)",3,"8–12",3],["Vállból nyomás ülve",2,"8–12",3],["Oldalemelés állva csigán",4,"10–15",2],["Tárogatás csigán",2,"10–15",2],["Tricepsz fej felett csigán",2,"8–15",2],["Tricepsz letolás csigán",2,"8–15",2]],
   WU:{0:[["bar",10],[.5,5],[.75,1]],1:[[.5,5]],2:[[.5,5]]}
 });
 initTracker(document.getElementById("view-pull"),{
-  prefix:"pulllog",
+  prefix:"pulllog",type:"Pull",
   EX:[["Lehúzás mellhez",3,"6–10",3],["Melltámasztós evezés (30°)",3,"8–12",3],["Csigás pullover",2,"8–12",2],["Face pull",2,"10–15",2],["Ferdepados bicepsz kézisúlyzóval (60°)",2,"8–12",2],["Kalapács hajlítás csigán",2,"8–12",2]],
   WU:{0:[[.5,10],[.75,1]],1:[[.5,5]],4:[[.5,5]]}
 });
 initTracker(document.getElementById("view-legs"),{
-  prefix:"legslog",
+  prefix:"legslog",type:"Legs",
   EX:[["Guggolás súllyal",3,"8–12",3],["Bolgár guggolás",2,"8–12",3],["Román felhúzás",3,"8–12",3],["Ülő combfeszítés",2,"10–15",2],["Combhajlítás állva csigán",2,"10–15",2],["Vádli",4,"15–20",2],["Hasprés csigán",3,"10–15",2],["Lábemelés függeszkedve",3,"8–12",2]],
   WU:{0:[["bar",10],[.5,5],[.75,1]],1:[["bw",10]],2:[["bar",10]]}
 });
