@@ -43,6 +43,7 @@ input:focus{outline:2px solid var(--acc);outline-offset:1px}
 .m2::before,.m2::after{content:"";width:22px;height:1px;background:currentColor;opacity:.6}
 .daylog h1 .m2{color:var(--acc);opacity:.75}
 .fnalt{transition:opacity .9s ease}
+.sly{display:block;margin-top:10px;position:relative;width:28px;margin-left:auto;margin-right:auto}.sly svg{display:block}.sly .arr{position:absolute;left:100%;top:6px;margin-left:6px}.sly.tom{animation:slyb 1.8s ease-in-out infinite}.dltom.tomb{animation:tombl 1.8s ease-in-out infinite}@keyframes tombl{0%,100%{opacity:.2}50%{opacity:1}}.dltom .tarr{display:inline-block;vertical-align:-1px;margin-left:7px}@keyframes slyb{0%,100%{opacity:1}50%{opacity:.2}}
 .hbody{overflow:hidden}
 .daylog .ex,.daylog .histitem,.daylog details.dynwarm,.daylog .actions,.daylog [data-role="hist"]{transform:translateZ(0);backface-visibility:hidden}
 .dwbody,.hbody{will-change:height}
@@ -91,6 +92,8 @@ button:focus-visible{outline:2px solid var(--acc);outline-offset:2px}
 button[data-role="clear"].undoing{background:var(--acc);color:var(--accink);border-color:var(--acc);text-shadow:none}
 .msg.good{color:var(--ok)}
 .msg.bad{color:#e5484d}
+#hibatoast{position:fixed;left:0;right:0;top:46%;text-align:center;z-index:100000;color:#e5484d;font-size:15px;font-weight:600;letter-spacing:.3em;padding-left:.3em;text-transform:uppercase;pointer-events:none;opacity:0}
+#hibatoast.on{animation:hibat 2.2s ease forwards}@keyframes hibat{0%{opacity:0}12%,75%{opacity:1}100%{opacity:0}}
 h3{font-size:15px;margin:22px 0 8px;color:var(--mute);font-weight:600;text-shadow:var(--textshadow)}
 .dynwarm{border:1px solid var(--line);border-radius:8px;padding:6px 8px;background:var(--card);margin-bottom:16px;font-size:12px;color:var(--mute);text-shadow:var(--textshadowcard)}
 .dynwarm summary{cursor:pointer;font-weight:600;list-style:none;text-align:center}
@@ -219,7 +222,7 @@ details.hist[open]>summary::before{transform:rotate(90deg)}
 
   <div class="eyebrow" id="todaydate"><span class="dt"></span><span class="wd"></span></div>
   <div class="launchergroup">
-  <h1>Edzésnapló</h1>
+  <h1 id="fejbtn" style="cursor:pointer;-webkit-tap-highlight-color:transparent">Edzésnapló</h1>
   <div class="opts">
     <button class="day ready" data-target="push">
       <span>Push<span class="sub" data-lastsub="pushlog">Nyomó edzés</span></span>
@@ -230,6 +233,7 @@ details.hist[open]>summary::before{transform:rotate(90deg)}
     <button class="day ready" data-target="legs">
       <span>Legs<span class="sub" data-lastsub="legslog">Lábedzés</span></span>
     </button>
+    
   </div>
   </div>
   <div class="footnote" id="footnote"></div>
@@ -433,9 +437,18 @@ function renderCycleDay(){
   var now=[],tom=[];
   if(dlNow)now.push("Deload");else if(dlTom)tom.push("Deload következik");
   if(isK(t))now.push("Kontroll");else if(isK(t+1))tom.push("Kontroll következik");
+  /* súlymérés: minden ciklus 1. napján kis mérleg ikon, előző nap villogva, » jellel (kontroll napján nem, az úgyis benne van) */
+  var sw=t%9===0&&!isK(t)?"on":t%9===8&&!isK(t+1)?"tom":"";
+  if(sw){var ic=document.createElement("span");ic.className="sly "+sw;ic.innerHTML='<svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="1.25" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="3.5"/><path d="M7.5 10.6A4.6 4.6 0 0 1 16.5 10.6L14.9 13.2H9.1Z"/><path d="M12 8.4v2.8"/></svg>'+(sw==="tom"?'<svg class="arr" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 6l6 6-6 6M13 6l6 6-6 6"/></svg>':'');el.appendChild(ic)}
   /* ha kettő esik egy napra: egy sorban, lassan váltakozva */
   clearInterval(window.FNALT);var alts=[];
-  [[now,"m2"],[tom,"dltom"]].forEach(function(g){if(!g[0].length)return;var sp=document.createElement("span");sp.className=g[1]+" fnalt";sp.textContent=g[0][0];el.appendChild(sp);if(g[0].length>1)alts.push([sp,g[0]])});
+  [[now,"m2"],[tom,"dltom"]].forEach(function(g){if(!g[0].length)return;var sp=document.createElement("span");sp.className=g[1]+" fnalt";sp.textContent=g[0][0];
+    /* "következik": villog, mint a mérleg, és » jel kerül mögé (a felirat a belső részben váltakozik) */
+    if(g[1]==="dltom"){var wr=document.createElement("span");wr.className="dltom tomb";sp.className="";wr.appendChild(sp);wr.insertAdjacentHTML("beforeend",'<svg class="tarr" viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 6l6 6-6 6M13 6l6 6-6 6"/></svg>');el.appendChild(wr)}
+    else el.appendChild(sp);
+    /* villogó "következik": a felirat csere mindig a villogás legsötétebb pontján történik, minden második villanásnál */
+    if(g[0].length>1){if(g[1]==="dltom"){var ti=0,tw=sp.parentNode;tw.addEventListener("animationiteration",function(){ti++;if(ti%2===0)sp.textContent=g[0][(ti/2)%g[0].length]})}else alts.push([sp,g[0]])}});
+  var slyEl=el.querySelector(".sly");if(slyEl)el.appendChild(slyEl);
   if(alts.length){var ai=0;window.FNALT=setInterval(function(){ai++;alts.forEach(function(a){var sp=a[0];sp.style.opacity="0";setTimeout(function(){sp.textContent=a[1][ai%a[1].length];sp.style.opacity=""},950)})},4000)}
   var rr=plan(t+20),off=false;for(var j=t;j<rr.length;j++)if(rr[j]!==SLOT[j%9]){off=true;break}
   el.classList.toggle("warn",off);
@@ -524,8 +537,9 @@ function renderCycleView(){
       if(i<0)return;
       var iso=isoAt(i),v=plan(i)[i];
       var marked=false;
-      if(v==="K"){sv(MK(),list.filter(function(m){return m!==iso}))}
-      else if(v!==null){list.push(iso);sv(MK(),list);marked=true}
+      /* ha a tároló nem fogadja el, semmi nem változik */
+      if(v==="K"){if(!sv(MK(),list.filter(function(m){return m!==iso}))){showHiba();return}}
+      else if(v!==null){list.push(iso);if(!sv(MK(),list)){showHiba();return}marked=true}
       window.ANIM=true;renderCycleView();renderCycleDay();
     }
     btn.addEventListener("contextmenu",function(e){e.preventDefault()});
@@ -592,7 +606,9 @@ document.addEventListener("visibilitychange",function(){if(!document.hidden){ren
 
 /* --- közös segédfüggvények --- */
 function ld(k,d){try{var v=localStorage.getItem(k);return v?JSON.parse(v):d}catch(e){return d}}
-function sv(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}
+function showHiba(){var t=document.getElementById("hibatoast");if(!t){t=document.createElement("div");t.id="hibatoast";document.body.appendChild(t)}
+  t.textContent="Hiba";t.classList.remove("on");void t.offsetWidth;t.classList.add("on")}
+function sv(k,v){try{localStorage.setItem(k,JSON.stringify(v));return true}catch(e){return false}}
 function today(){var d=new Date();return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0")}
 function nowTime(){var d=new Date();return String(d.getHours()).padStart(2,"0")+":"+String(d.getMinutes()).padStart(2,"0")}
 function fmt(d){var p=d.split("-");return p.length==3?p[0]+". "+p[1]+". "+p[2]+".":d}
@@ -699,6 +715,7 @@ function initTracker(root,cfg){
     msgEl.className="msg bad";
     msgEl.innerHTML='Törlöd ezt az edzést?<div class="confirmrow"><button type="button" class="p" data-role="confirmyes">Igen</button><button type="button" data-role="confirmno">Mégse</button></div>';
     msgEl.querySelector('[data-role="confirmyes"]').onclick=function(){
+      if(!sv(HK,hist.filter(function(h){return h.date!==date}))){msgEl.className="msg bad";msgEl.textContent="Hiba";return}
       msgEl.style.minHeight=msgEl.offsetHeight+"px";
       msgEl.className="msg good";msgEl.textContent="Törölve.";
       clearTimeout(msgTimer);msgTimer=setTimeout(function(){msgEl.textContent="";msgEl.className="msg";msgEl.style.minHeight=""},1000);
@@ -810,9 +827,14 @@ function initTracker(root,cfg){
     var v=validate();
     if(v.miss.length){v.els.forEach(function(n){n.classList.add("invalid")});showMsg("Még nincs kitöltve: "+v.miss.join(", "),"bad",false);return}
     var o=collect();if(isDeload(o.date,cfg.type))o.dl=1;
+    var prevHist=hist.slice();
     hist=hist.filter(function(h){return h.date!==o.date});hist.push(o);hist.sort(function(a,b){return a.date<b.date?-1:1});
     if(hist.length>5)hist=hist.slice(hist.length-5);
-    sv(HK,hist);last=lastReal();
+    /* ha a tároló nem fogadja el, csak piros "Hiba" jelenik meg, és a lista sem változik (a beírt adatok a mezőkben maradnak) */
+    if(!sv(HK,hist)){hist=prevHist;clearTimeout(msgTimer);$("msg").className="msg bad";$("msg").textContent="Hiba";return}
+    last=lastReal();
+    /* a lista magassága nem eshet vissza újrarajzolás közben (különben az oldal alján felugrik a képernyő) */
+    var hEl=$("hist");hEl.style.minHeight=hEl.offsetHeight+"px";clearTimeout(hEl._mh);hEl._mh=setTimeout(function(){hEl.style.minHeight=""},1600);
     stale=true;renderHist();renderLauncherSubs();
     var ni=$("hist").querySelector('.histitem[data-date="'+o.date+'"]');if(ni)slideInHist(ni);
     var sb=$("save");sb.classList.remove("svfl");void sb.offsetWidth;sb.classList.add("svfl");
@@ -932,14 +954,14 @@ document.querySelectorAll("details.dynwarm").forEach(function(d){
   /* törlés: első koppintás rákérdez, második (3 mp-en belül) töröl */
   del.addEventListener("click",function(){
     if(!del.classList.contains("sure")){resetGo();del.classList.add("sure");del.textContent="Biztosan törlöd?";clearTimeout(delT);delT=setTimeout(resetDel,3000);return}
-    resetDel();CYCLE_START=null;try{localStorage.removeItem("cycle.start");localStorage.setItem("cycle.miss","[]")}catch(e){}
+    resetDel();try{localStorage.removeItem("cycle.start");localStorage.setItem("cycle.miss","[]")}catch(e){showHiba();return}CYCLE_START=null;
     ov.classList.remove("on");renderCycleDay();positionTodayDate()});
   ov.addEventListener("click",function(e){if(e.target===ov)ov.classList.remove("on")});
   go.addEventListener("click",function(){if(!inp.value)return;
     /* újraindításnál rákérdez: első koppintás kérdez, második (3 mp-en belül) indít */
     if(CYCLE_START&&!go.classList.contains("sure")){go.classList.add("sure");go.textContent="Biztosan?";clearTimeout(goT);goT=setTimeout(resetGo,3000);return}
     clearTimeout(goT);
-    CYCLE_START=inp.value;try{localStorage.setItem("cycle.start",JSON.stringify(CYCLE_START));localStorage.setItem("cycle.miss","[]")}catch(e){}
+    try{localStorage.setItem("cycle.start",JSON.stringify(inp.value));localStorage.setItem("cycle.miss","[]")}catch(e){resetGo();showHiba();return}CYCLE_START=inp.value;
     ov.classList.remove("on");renderCycleDay();});
 })();
 </script>
@@ -954,6 +976,751 @@ document.querySelectorAll("details.dynwarm").forEach(function(d){
     if((top&&dy>0)||(bot&&dy<0)){if(e.cancelable)e.preventDefault()}
   },{passive:false});
 })();
+</script>
+<script>if("serviceWorker" in navigator&&(location.protocol==="https:"||location.hostname==="localhost"))navigator.serviceWorker.register("sw.js").catch(function(){});</script>
+
+<!-- ════ FEJLŐDÉS oldal: az „Edzésnapló” címre koppintva nyílik, teljes képernyőn ════ -->
+<div id="fejview" style="display:none;position:fixed;inset:0;z-index:9999;background:#111111;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)"><iframe id="fejframe" title="Fejlődés" style="border:0;width:100%;height:100%;display:block;background:#111111"></iframe></div>
+<script>
+(function(){var v=document.getElementById("fejview"),f=document.getElementById("fejframe");
+ function open(){/* mindig frissen töltődik be, így a mai napon nyílik */f.srcdoc=document.getElementById("fejsrc").textContent.split("<\\/script").join("<\/script");v.style.display="block";document.documentElement.style.overflow="hidden"}
+ function close(){v.style.display="none";document.documentElement.style.overflow=""}
+ document.getElementById("fejbtn").addEventListener("click",function(e){e.preventDefault();e.stopImmediatePropagation();open()},true);
+ window.addEventListener("message",function(e){if(e.data==="fej-close")close()});
+ var desk=matchMedia("(pointer:fine)").matches;
+ f.addEventListener("load",function(){if(desk&&v.style.display==="block"){try{f.contentWindow.__navgo("b")}catch(x){}}});
+ if(desk)window.addEventListener("load",open);
+})();
+</script>
+<!-- a Fejlődés oldal forrása (a benne lévő </script> jelek <\/script-re cserélve, hogy itt ne zárják le) -->
+<script type="text/html" id="fejsrc">
+<!doctype html><html lang="hu"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Fejlődés</title>
+<style>
+/* ════ ALAP ════ */
+:root{--a:#e0c9a0;--bg:#111;--card:#242424;--ink:#fff;--m:rgba(255,255,255,.55);--f:rgba(255,255,255,.12)}
+*{box-sizing:border-box}
+html{background:var(--bg)}
+body{margin:0 auto;background:var(--bg);color:var(--ink);font:15px/1.4 Inter,system-ui,-apple-system,sans-serif;padding:20px 16px 60px;padding-top:calc(env(safe-area-inset-top,0px) + 18px);max-width:520px;-webkit-text-size-adjust:100%;transition:opacity .3s ease}
+html:not(.ready) body{opacity:0}                 /* betöltéskor finoman jelenik meg */
+svg{display:block;width:100%;height:auto;overflow:visible}
+svg text{font-family:Inter,system-ui,sans-serif}
+.card{background:var(--card);border-radius:14px;padding:14px 16px;margin-bottom:12px}
+.nm{font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:var(--m);margin-bottom:6px;display:flex;justify-content:space-between;gap:8px;align-items:baseline}
+.nodata{text-align:center;color:var(--m);font-size:13px;padding:30px 10px;line-height:1.5}
+
+/* ════ OLDALAK (Ciklus / Kontroll / Blokk) ════ */
+.pane{display:none;position:relative}
+.pane.on{display:block;animation:fi .35s ease-out}
+@keyframes fi{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+.pane .card{transition:opacity .2s}
+.pane.fade .card{opacity:.25}
+
+/* ── fejléc: cím, dátum, pöttyök (oldalra húzva léptet) ── */
+.hdr{display:flex;align-items:center;justify-content:space-between;gap:8px;text-align:center;margin:2px 0 14px;touch-action:pan-y}
+.hdr .mid{flex:1;transition:opacity .2s}
+.hdr .t1{font-size:19px;letter-spacing:.24em;padding-left:.24em}
+.hdr .t2{font-size:11.5px;color:var(--m);letter-spacing:.1em;margin-top:4px}
+.hsp{width:42px;flex:none}
+.hdr .dots{display:flex;justify-content:center;gap:5px;margin-top:8px}
+.hdr .dots i{width:5px;height:5px;border-radius:50%;background:var(--a);opacity:.25}
+.hdr .dots i.on{opacity:1;transform:scale(1.3)}
+.hdr[data-s=c] .dots i.past{background:rgba(224,201,160,.32)}
+.hdr[data-s=c] .dots i.now{background:var(--a)}
+.hdr[data-s=c] .dots i.on{background:#fff}
+.hdots{display:flex;gap:5px;justify-content:center;margin-top:7px}   /* mostani ciklus: 9 nap */
+.hdots i{width:7px;height:7px;border-radius:50%;background:rgba(255,255,255,.1)}
+.hdots i.on,.hdots i.now{background:var(--a)}
+/* × vissza a ciklushoz (Kontroll, Blokk) */
+.bkx{display:flex;position:absolute;right:0;top:0;width:36px;height:36px;border-radius:50%;border:1px solid var(--f);background:#1b1b1b;color:var(--m);align-items:center;justify-content:center}
+.bkx svg{width:16px;height:16px}
+/* ← kilépés az egész Fejlődésből (bal oldalt, az × párja) */
+.bkexit{display:flex;position:absolute;left:0;top:0;width:36px;height:36px;border-radius:50%;border:1px solid var(--f);background:#1b1b1b;color:var(--m);align-items:center;justify-content:center;cursor:pointer}
+.bkexit svg{width:16px;height:16px}
+
+/* ════ REKORDOK: pill a fejléc alatt + lenyíló lista ════ */
+#recs{display:flex;align-items:baseline;justify-content:center;gap:3px;white-space:nowrap;margin:2px auto 16px;width:fit-content;padding:4px 10px;border-radius:20px;background:rgba(255,255,255,.04);border:1px solid var(--f);font-size:8.5px;color:var(--m);letter-spacing:.04em;cursor:pointer;-webkit-tap-highlight-color:transparent}
+#recs .st{display:inline-block;color:var(--a);font-size:8px;align-self:center;text-shadow:0 0 6px rgba(224,201,160,.5)}
+#recs b{color:var(--ink);font-weight:500;font-size:9px}
+#recs .n{color:var(--a);font-weight:600;font-size:9.5px}
+#recs .sep{width:1px;height:10px;background:var(--f);align-self:center}
+#recs .w{color:var(--m)}
+.reclist{max-height:0;overflow:hidden;transition:max-height .6s cubic-bezier(.4,0,.2,1);margin:-8px 0 0}
+.reclist.open{max-height:3000px;margin-bottom:16px}
+.reclist .in{background:var(--card);border-radius:14px;padding:6px 16px}
+.reclist .rw{border-bottom:1px solid var(--f)}
+.reclist .rw:last-of-type{border:0}
+.reclist .rw.old{opacity:.5}
+.reclist .r{display:flex;justify-content:space-between;align-items:center;font-size:12.5px;padding:6px 0;cursor:pointer;-webkit-tap-highlight-color:transparent}
+.reclist .r b{font-weight:500}
+.reclist .r span:last-child{color:var(--m);white-space:nowrap}
+#reclist .in .rw{transition:opacity .18s}
+#reclist .in.bfade .rw{opacity:0}
+/* napsáv-léptető: ‹ 0–9 nap › */
+.bnav{display:flex;align-items:center;justify-content:space-between;padding:10px 0 6px;border-bottom:1px solid var(--f)}
+.bnav button{width:34px;height:34px;border-radius:50%;border:1px solid var(--f);background:#1b1b1b;color:var(--a);font-size:18px;line-height:1;cursor:pointer}
+.bnav button:disabled{visibility:hidden}
+.bnav div{text-align:center}
+.bnav b{display:block;font-size:11px;letter-spacing:.3em;padding-left:.3em;color:var(--a);text-transform:uppercase;font-weight:600}
+.bnav span{font-size:10.5px;color:var(--m)}
+.bnav .bd{display:flex;justify-content:center;gap:4px;margin-top:4px}
+.bnav .bd u{width:5px;height:5px;border-radius:50%;background:var(--a);opacity:.25}
+.bnav .bd u.on{opacity:1}
+
+/* ════ CIKLUS: a kör ════ */
+.ering{position:relative;text-align:center;margin:0 0 4px}
+#ering path.seg{cursor:pointer;transition:opacity .2s}
+#ering g.sg{-webkit-tap-highlight-color:transparent}
+#ering text{pointer-events:none}
+#ering .ctr{cursor:pointer}
+/* a kör két oldalán: Kontroll (mérőszalag) és Blokk (90) */
+.ncorn{position:absolute;top:0;left:0;z-index:4;width:42px;display:flex;flex-direction:column;align-items:center;gap:5px;-webkit-tap-highlight-color:transparent}
+.ncorn i{font-style:normal;width:42px;height:42px;border-radius:50%;border:1px solid var(--f);background:#1a1a1a;display:flex;align-items:center;justify-content:center;color:var(--a)}
+.ncorn i svg{width:20px;height:20px}
+
+/* ════ KOCKÁK (3 oszlopos számok) ════ */
+.kp{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.kp div{background:#1b1b1b;border-radius:10px;padding:9px 10px}
+.kp .l{font-size:9px;letter-spacing:.14em;color:var(--m);text-transform:uppercase}
+.kp .v{font-size:16px;font-weight:600;margin-top:2px;white-space:nowrap}
+.kp .d{font-size:10.5px;color:var(--a);font-weight:600}
+/* edzés nap és ciklus összesítés: középre zárt, tömörebb kockák */
+#eview,#cview{transition:opacity .18s}
+#eview .kp,#cview .kp{grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
+#eview .kp>div,#cview .kp>div{text-align:center;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;padding:8px 6px 7px;gap:3px;line-height:1.2}
+#eview .kp>div>div,#cview .kp>div>div{padding:0;background:none;border-radius:0}
+#eview .kp .l,#cview .kp .l{letter-spacing:.14em;margin:0}
+#eview .kp .v,#cview .kp .v{margin:0;font-size:17px}
+#eview .kp .d,#cview .kp .d{margin-top:2px;min-height:0}
+#eview .kp .d.ng,#cview .kp .d.ng{color:var(--m)!important}
+#eview .kp>div:nth-child(3) .v{color:var(--a)}
+
+/* ════ EDZÉS NAP ════ */
+.pbar{display:flex;gap:2px;width:78%;height:8px;margin:6px 0}   /* Progresszió csíkjai */
+.pbar i{flex:1;border-radius:2px}
+#e1{padding-top:6px}
+.tmh{font-size:20px;font-weight:600;color:var(--a);margin-bottom:10px}
+#e3 svg{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}   /* nyomva tartáshoz */
+
+/* ════ KONTROLL ════ */
+.sm3{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.sm3>div{background:#1b1b1b;border-radius:10px;padding:8px 8px 4px}
+.sm3 .n{font-size:10px;color:var(--m)}
+.sm3 .k{font-size:18px;font-weight:600;margin-top:3px}
+.sm3 .k small{font-size:10px;color:var(--m);font-weight:400}
+.sm3 .dd{font-size:11px;font-weight:600;margin:1px 0 2px}
+#k1 .sm3>div{text-align:center;padding:9px 6px 6px}
+#k1 .sm3 .dd span{margin:0 auto}
+#k2 svg{display:block;margin:0 auto}
+#k4 .sm3>div{text-align:center;padding:9px 6px 7px}
+
+/* ════ BLOKK ════ */
+.brings{display:flex;justify-content:space-around;margin-top:4px}
+.brings>div{text-align:center}
+.bcap{font-size:11px;margin-top:8px;color:var(--w)}
+.bbars{display:flex;align-items:flex-end;gap:7px;height:120px;padding:0 4px;border-bottom:1px solid rgba(255,255,255,.08)}
+.bbars i{flex:1;border-radius:5px;background:#7a6a50}
+.bbars i.hi{background:var(--a)}
+.bbl{display:flex;gap:7px;padding:6px 4px 0}
+.bbl span{flex:1;text-align:center;font-size:9px;color:var(--m)}
+#p-b .kp>div .l{min-height:2.5em}
+.mt{width:100%;border-collapse:collapse;font-size:13px}
+.mt td{padding:8px 0;border-bottom:1px solid var(--f)}
+.mt tr:last-child td{border:0}
+.mt td:not(:first-child){text-align:right}
+.mt .d{color:var(--a);font-weight:600}
+.mt .h td{font-size:9.5px;letter-spacing:.14em;color:var(--m);text-transform:uppercase;padding-top:0}
+.appback{display:inline-block;font-size:14px;color:var(--m);text-decoration:none;padding:4px 0;margin:0 0 6px;-webkit-tap-highlight-color:transparent}
+.sub .appback{visibility:hidden}
+</style>
+</head><body>
+<a class="appback" href="#" onclick="parent.postMessage('fej-close','*');return false">← Vissza</a>
+
+<div class="pane on" id="p-c">
+<div class="hdr" data-s="c"><div class="hsp"></div><div class="mid"><div class="t1"></div><div class="t2"></div><div class="dots"></div></div><div class="hsp"></div></div>
+<div class="recs" id="recs"></div>
+<div class="reclist" id="reclist"><div class="in"></div></div>
+<div class="ering"><div id="ering"></div><div class="ncorn l" data-k="k"><i><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 15.5 15.5 3l5.5 5.5L8.5 21z"/><path d="M7 11.5l1.8 1.8M9.5 9l1.8 1.8M12 6.5l1.8 1.8"/></svg></i></div><div class="ncorn r" data-k="b"><i><svg viewBox="0 0 24 24"><text x="12" y="18" text-anchor="middle" font-size="16" font-weight="700" letter-spacing="-.2" fill="currentColor" font-family="-apple-system,Inter,sans-serif">90</text></svg></i></div></div>
+<div id="eview">
+<div class="card"><div class="kp">
+<div><div class="l">Volumen</div><div class="v">14 670 kg</div><div class="d ng">összesen</div></div><div><div class="l">Idő</div><div class="v">1 ó 5 p</div><div class="d ng">+2 p</div></div><div><div class="l">Progresszió</div><div class="v"></div><div class="d"></div></div></div></div>
+
+<div class="card"><div id="e1"></div></div>
+
+<div class="card"><div id="e3"></div></div>
+
+</div>
+<div id="cview"><div class="card" id="cs1"></div><div class="card" id="cs7"></div><div class="card" id="cs2"></div><div class="card" id="cs3"></div><div class="card" id="cs5"></div></div>
+</div>
+
+<div class="pane" id="p-k">
+<div class="bkexit"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M11 6l-6 6 6 6"/></svg></div><div class="bkx"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg></div>
+<div class="hdr" data-s="k"><div class="hsp"></div><div class="mid"><div class="t1"></div><div class="t2"></div><div class="dots"></div></div><div class="hsp"></div></div>
+<div class="card"><div class="nm" style="justify-content:center;padding-left:.18em">Becsült 1RM</div><div id="k1"></div></div>
+
+<div class="card"><div class="nm" style="justify-content:center;padding-left:.18em">Relatív erő</div><div id="k2"></div></div>
+
+<div class="card"><div class="nm" style="justify-content:center;padding-left:.18em">Testsúly</div><div id="k3"></div></div>
+
+<div class="card"><div class="nm" style="justify-content:center;padding-left:.18em">Méretek</div><div id="k4"></div></div>
+
+<div class="card"><div class="nm" style="justify-content:center;padding-left:.18em">Stagnálás</div><div id="k5"></div></div>
+
+</div>
+
+<div class="pane" id="p-b">
+<div class="bkexit"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M11 6l-6 6 6 6"/></svg></div><div class="bkx"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg></div>
+<div class="hdr" data-s="b"><div class="hsp"></div><div class="mid"><div class="t1"></div><div class="t2"></div><div class="dots"></div></div><div class="hsp"></div></div>
+<div class="card"><div class="nm">Blokk összesen</div><div class="kp">
+<div><div class="l">Súlyzós edzés</div><div class="v">45</div><div class="d">10 ciklus</div></div><div><div class="l">Súlyzós idő</div><div class="v">47 ó</div><div class="d">átl. 63 p</div></div><div><div class="l">Volumen 1.→9.</div><div class="v">+6,5 %</div><div class="d">+2 670 kg</div></div>
+<div><div class="l">Rekord</div><div class="v">27 ★</div><div class="d">Guggolás 6</div></div><div><div class="l">Legjobb ciklus</div><div class="v">9.</div><div class="d">43 870 kg</div></div><div><div class="l">Utolsó edzés</div><div class="v">aug. 15.</div><div class="d">a 90. nap</div></div></div></div>
+
+<div class="card"><div class="nm" style="justify-content:center;padding-left:.18em">Erőfejlődés</div><div id="b1"></div></div>
+
+<div class="card"><div class="nm">Test · eleje → vége</div><div id="b2"></div></div>
+
+<div class="card"><div class="nm">Volumen ciklusonként</div><div id="b3"></div></div>
+
+<div class="card"><div class="nm">Deload előtt / után</div><div id="b4"></div></div>
+
+<div class="card"><div class="nm">Napszak hatása</div><div id="b5"></div></div>
+
+<div class="card"><div class="nm">Naptár · a blokk minden napja</div><div id="b6"></div></div>
+<div class="card"><div class="nm">Push · Pull · Legs · a blokk ciklusai</div><div id="c4"></div></div>
+</div>
+
+<script>
+/* ═══════════════════════════════════════════════════════════════
+   FEJLŐDÉS – statisztika oldal
+   Tartalom:
+     1. ALAP – színek, SVG-rajzoló segédek
+     2. MINTA ADATOK – edzések, ciklusok, kontrollok, blokkok
+     3. EDZÉS NAP – %-os csúszkák, táblázat, felső 3 kocka, nem edzésnapok
+     4. KONTROLL
+     5. BLOKK
+     6. LÉPTETÉS – oldalra húzás a fejlécen
+     7. REKORDOK – pill és lenyíló lista
+     8. CIKLUS – a 9 napos kör, fejléc-pöttyök, lüktetés, összesítés
+     9. VÉGÉ – zöld pluszok, finom megjelenés
+   (A navigáció a lenti külön <script>-ben van.)
+   ═══════════════════════════════════════════════════════════════ */
+
+/* ════ 1. ALAP ════ */
+var A="#e0c9a0",A2="rgba(224,201,160,.35)",W="#fff",F="rgba(255,255,255,.12)",T="rgba(255,255,255,.45)";
+function $(i){return document.getElementById(i)||document.createElement("div")}
+function S(w,h,x,y0){return '<svg viewBox="0 '+(y0||0)+' '+w+' '+h+'">'+x+'</svg>'}
+function t(x,y,s,o){o=o||{};return '<text x="'+x+'" y="'+y+'" font-size="'+(o.fs||9)+'" fill="'+(o.c||T)+'" text-anchor="'+(o.a||'start')+'"'+(o.w?' font-weight="'+o.w+'"':'')+'>'+s+'</text>'}
+function grid(w,y0,y1,n,x0){var s='';for(var i=0;i<=n;i++){var y=y0+(y1-y0)*i/n;s+='<line x1="'+(x0||0)+'" x2="'+w+'" y1="'+y+'" y2="'+y+'" stroke="'+F+'"/>'}return s}
+function pl(P,o){o=o||{};return '<polyline points="'+P.map(function(p){return p.join(",")}).join(" ")+'" fill="none" stroke="'+(o.c||A)+'" stroke-width="'+(o.w||2)+'" stroke-linejoin="round" stroke-linecap="round"'+(o.d?' stroke-dasharray="'+o.d+'"':'')+(o.op?' opacity="'+o.op+'"':'')+'/>'}
+function area(P,base,id){return '<defs><linearGradient id="'+id+'" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="'+A+'" stop-opacity=".3"/><stop offset="1" stop-color="'+A+'" stop-opacity="0"/></linearGradient></defs><polygon points="'+P[0][0]+','+base+' '+P.map(function(p){return p.join(",")}).join(" ")+' '+P[P.length-1][0]+','+base+'" fill="url(#'+id+')"/>'}
+function f1(x){return (Math.round(x*10)/10).toString().replace(".",",")}
+function sg(x){return (x>0?'+':x<0?'−':'±')+f1(Math.abs(x))}
+var hatch='<defs><pattern id="h" width="5" height="5" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><line x1="0" y1="0" x2="0" y2="5" stroke="'+A+'" stroke-width="1.5" opacity=".8"/></pattern></defs>';
+
+/* ════ 2. MINTA ADATOK ════ */
+/* edzések: [név, mostani súly, előző súly, mostani ismétlések, előző ismétlések] – 0: Push, 1: Legs, 2: Pull, 3: előző Push */
+var WD=[
+ [["Fekvenyomás",82.5,80,[10,9,8],[10,10,9]],["Ferde nyomás",30,30,[11,10,10],[10,9,9]],["Vállból nyomás",17,16,[10,9],[11,10]],["Oldalemelés",10,10,[14,14,13,13],[14,14,13,13]],["Tárogatás",14,14,[12,11],[13,12]],["Tricepsz fej felett",22,22,[12,11],[12,10]],["Tricepsz letolás",32.5,30,[11,10],[12,12]]],
+ [["Guggolás",100,100,[10,9,9],[10,9,8]],["Bolgár guggolás",20,20,[10,10],[9,9]],["Román felhúzás",90,85,[9,9,8],[10,10,10]],["Combfeszítés",50,50,[13,12],[12,12]],["Combhajlítás",25,25,[12,12],[12,11]],["Vádli",60,60,[16,15,15,14],[16,15,15,14]],["Hasprés",40,40,[13,12,12],[12,12,11]],["Lábemelés",0,0,[11,10,10],[10,10,9]]],
+ [["Lehúzás",65,62.5,[9,8,8],[10,10,9]],["Melltámasztós",24,24,[11,10,10],[10,10,9]],["Csigás pullover",25,25,[12,11],[12,11]],["Face pull",20,20,[14,13],[13,13]],["Ferde bicepsz",12,12,[10,9],[10,10]],["Kalapács hajlítás",15,14,[10,9],[12,11]]],
+ [["Fekvenyomás",80,80,[9,9,8],[9,8,8]],["Ferde nyomás",30,27.5,[10,9,9],[12,11,11]],["Vállból nyomás",16,16,[10,9],[9,9]],["Oldalemelés",10,10,[14,14,13,13],[13,13,13,12]],["Tárogatás",14,12,[12,11],[14,13]],["Tricepsz fej felett",22,22,[12,10],[11,10]],["Tricepsz letolás",30,30,[12,11],[11,11]]]];
+function SUMA(a){return a.reduce(function(x,y){return x+y},0)}
+function mkEX(rs){return rs.map(function(r){var bw=!r[1],vn=(bw?1:r[1])*SUMA(r[3]),vp=(bw?1:r[2])*SUMA(r[4]);return [r[0],vn,vp,vn>vp?"↗":vn<vp?"↘":"→",r[1]-r[2],SUMA(r[3])-SUMA(r[4]),r[0],bw,r[1],r[2]]})}
+var EX=mkEX(WD[0]);
+/* fejlécek: ciklusok (0 = mostani), kontrollok, blokkok */
+var ST={
+ /* edzés napok (Push, Legs, Pull, előző Push): [Volumen, Idő, Progresszió] – a Volument és a Progressziót a WD-ből számolja (3. rész) */
+ e:[{kp:[null,["1 ó 5 p","+2 p"],null]},{kp:[null,["1 ó 4 p","+3 p"],null]},{kp:[null,["51 p","−6 p"],null]},{kp:[null,["1 ó 3 p","+1 p"],null]}],
+ c:[{t1:"7. CIKLUS",t2:"okt. 9. – okt. 17. · folyamatban"},
+    {t1:"6. CIKLUS",t2:"szept. 30. – okt. 8."},
+    {t1:"5. CIKLUS",t2:"szept. 21. – szept. 29."},
+    {t1:"4. CIKLUS",t2:"szept. 12. – szept. 20."},
+    {t1:"3. CIKLUS",t2:"szept. 3. – szept. 11."},
+    {t1:"2. CIKLUS",t2:"aug. 25. – szept. 2."},
+    {t1:"1. CIKLUS",t2:"aug. 16. – aug. 24."}],
+ k:[{t1:"4. KONTROLL",t2:"szept. 21. · előző: aug. 7."},{t1:"3. KONTROLL",t2:"aug. 7. · előző: jún. 23."},{t1:"2. KONTROLL",t2:"jún. 23. · előző: máj. 18."},{t1:"1. KONTROLL",t2:"máj. 18. · kiinduló mérés"}],
+ b:[{t1:"1. BLOKK",t2:"máj. 18. – aug. 15. · 90 nap",kp:[["45","10 ciklus"],["47 ó 20 p","átl. 1 ó 3 p"],["+6,5 %","+2 670 kg"],["27 ★","Guggolás 6"],["9.","43 870 kg"],["aug. 15.","a 90. nap"]]},
+    {open:true,t1:"BLOKK",t2:'aug. 16. – nov. 13.<div style="font-size:.78em;opacity:.6;margin-top:3px;letter-spacing:.06em">{{NAP}}. nap</div>',kp:[["32","7 ciklus eddig"],["35 ó 40 p","átl. 1 ó 6 p"],["300 e","kg eddig"],["19 ★","Fekvenyomás 5"],["6.","45 120 kg"],["16–17","óra között"]]}]};
+var SI={c:0,k:0,b:0};
+ST.b=ST.b.filter(function(x){return !x.open});
+
+/* ════ 3. EDZÉS NAP ════ */
+/* ── Edzés nap · gyakorlatonkénti változás (%-os csúszkák) ── */
+(function(){
+ var RED="#e8806f";
+ function kgs(d){d=Math.round(d*10)/10;var a=String(Math.abs(d)).replace('.',',');return d>0?'+'+a+' kg':d<0?'−'+a+' kg':'±0'}
+ function pct(v){return Math.abs(v).toFixed(1).replace('.',',')+' %'}
+ var HALO=' stroke="#242424" stroke-width="3" stroke-linejoin="round" paint-order="stroke"';
+ function small(x,y,s){return t(x,y,s,{fs:8.5,c:T,a:'middle'}).replace('<text','<text class="ng"'+HALO)}
+ /* százalékos változás gyakorlatonként; ahol nőtt a súly, ott a súly %-a */
+ function pfeny(){
+  var rows=EX.slice(),val=function(e){return (e[1]-e[2])/e[2]*100},
+   mxp=Math.max.apply(0,rows.map(function(e){return e[4]>0?0:Math.max(0,val(e))})),
+   mxn=Math.max.apply(0,rows.map(function(e){return e[4]>0?0:Math.max(0,-val(e))})),
+   c=190,PW=96,lim=Math.min(15,Math.max(5,Math.ceil(mxp/5-1e-9)*5)),sc=PW/lim,LM=mxn>5?10:5,scL=54/LM,
+   y=24,rh=30,H=rows.length*rh+8,s='';
+  s+='<defs><linearGradient id="pgA" x1="0" x2="1"><stop offset="0" stop-color="'+A+'" stop-opacity=".05"/><stop offset="1" stop-color="'+A+'"/></linearGradient><linearGradient id="pgR" x1="1" x2="0"><stop offset="0" stop-color="'+RED+'" stop-opacity=".05"/><stop offset="1" stop-color="'+RED+'"/></linearGradient><radialGradient id="pgl"><stop offset="0" stop-color="'+A+'" stop-opacity=".45"/><stop offset="1" stop-color="'+A+'" stop-opacity="0"/></radialGradient><radialGradient id="pglr"><stop offset="0" stop-color="'+RED+'" stop-opacity=".45"/><stop offset="1" stop-color="'+RED+'" stop-opacity="0"/></radialGradient></defs>';
+  s+='<line x1="'+c+'" x2="'+c+'" y1="9" y2="'+H+'" stroke="rgba(255,255,255,.12)"/>';
+  /* rács: jobbra a pozitív, balra a negatív tartomány */
+  for(var g=1;g<=4;g++){var gx=c+g*PW/4,gv=lim*g/4,lab=g%2===0;s+='<line x1="'+gx+'" x2="'+gx+'" y1="9" y2="'+H+'" stroke="rgba(255,255,255,'+(g===4?.1:lab?.07:.04)+')"'+(g===4?'':' stroke-dasharray="2 3"')+'/>'+(lab?t(gx,5,String(gv).replace('.',',')+(g===4?' %':''),{fs:7.5,c:T,a:'middle'}):'')}
+  s+=t(c,5,'0',{fs:7.5,c:T,a:'middle'});
+  rows.forEach(function(e,k){s+='<rect x="'+(c-54)+'" y="'+(y+k*rh-6)+'" width="'+(54+PW)+'" height="12" rx="6" fill="rgba(255,255,255,.035)"/>'});
+  for(var g=1;g<=4;g++){var gx=c-g*54/4,gv=LM*g/4,lab=g%2===0;s+='<line x1="'+gx+'" x2="'+gx+'" y1="9" y2="'+H+'" stroke="rgba(255,255,255,'+(g===4?.1:lab?.07:.04)+')"'+(g===4?'':' stroke-dasharray="2 3"')+'/>'+(lab?t(gx,5,'−'+String(gv).replace('.',','),{fs:7.5,c:T,a:'middle'}):'')}
+  /* sorok */
+  rows.forEach(function(e,k){var d=e[1]-e[2],v=val(e),w=d<0?Math.min(Math.abs(v),LM)*scL:Math.min(Math.abs(v),lim)*sc,yy=y+k*rh,col=d>0?A:d<0?RED:T,x2=c+(d>0?w:-w);
+   s+=t(0,yy+3.5,e[0],{fs:14.5,c:W});
+   if(e[4]>0){/* nőtt a súly: a súlynövekedés %-a */
+    var wp=e[4]/e[9]*100,xw=c+Math.min(wp,lim)*sc;
+    s+='<rect x="'+c+'" y="'+(yy-1.25)+'" width="'+(xw-c)+'" height="2.5" rx="1.25" fill="url(#pgA)"/><circle cx="'+xw+'" cy="'+yy+'" r="11" fill="url(#pgl)"/><circle cx="'+xw+'" cy="'+yy+'" r="4.5" fill="'+A+'"/>'+(wp>lim?t(xw+13,yy+3.5,'»',{fs:9.5,c:A,w:700,a:'middle'}):'')+small((c+xw)/2,yy-8,'+'+String(e[4]).replace('.',',')+' kg')+t(340,yy+3.5,'+'+pct(wp),{fs:10,c:A,w:600,a:'end'});
+    return}
+   if(d)s+='<rect x="'+(d>0?c:x2)+'" y="'+(yy-1.25)+'" width="'+w+'" height="2.5" rx="1.25" fill="url(#'+(d>0?'pgA':'pgR')+')"/><circle cx="'+x2+'" cy="'+yy+'" r="11" fill="url(#'+(d>0?'pgl':'pglr')+')"/><circle cx="'+x2+'" cy="'+yy+'" r="4.5" fill="'+col+'"/>';
+   else s+='<circle cx="'+c+'" cy="'+yy+'" r="3.5" fill="#232323" stroke="'+T+'" stroke-width="1.4"/>';
+   if(Math.abs(v)>(d<0?LM:lim))s+=t(x2+(d>0?11:-11),yy+3.5,d>0?'»':'«',{fs:9.5,c:col,w:700,a:'middle'});
+   if(d)s+=small((c+x2)/2,yy-8,e[7]?(d>0?'+':'−')+Math.abs(d)+' ism':kgs(d));
+   s+=t(340,yy+3.5,d?(v>0?'+':'−')+pct(v):'±0',{fs:10,c:col,w:600,a:'end'})});
+  /* fejléc: az átlagos változás (a súlyemelés nélküli gyakorlatokon) */
+  var ar=rows.filter(function(e){return !(e[4]>0)}),av=ar.length?ar.reduce(function(a,e){return a+(e[1]-e[2])/e[2]*100},0)/ar.length:0;
+  return '<div class="tmh" style="text-align:center">'+(av>=0?'+':'−')+pct(av)+'</div>'+S(340,rows.length*rh+12,s)}
+ window.__pfeny=pfeny;
+ window.__e1=function(){$('e1').innerHTML=pfeny()};
+ window.__e1()})();
+
+/* ── Edzés nap · táblázat: sorozatok, változás, súly; nyomva tartva az előző edzés ── */
+(function(){
+ var RED="#e8806f",GRN="#4cc38a",R=WD[0];
+ var ORD=EX.map(function(e){return e[0]});R.sort(function(a,b){return ORD.indexOf(a[0])-ORD.indexOf(b[0])});
+ function f(x){return String(x).replace('.',',')}
+ /* sorozat-kockák; prev=true: alatta kicsiben az előző ismétlés (nyomva tartáskor) */
+ function setbox(r,x0,y,cw,bw,prev){var s='';
+  r[3].forEach(function(v,i){var p=r[4][i],vn=v*r[1],vp=p*r[2],d=r[1]!==r[2]?(vn>vp?1:vn<vp?(r[1]>r[2]?0:-1):0):v-p,c=d>0?A:d<0?RED:W,x=x0+i*cw,
+    fl=d>0?'rgba(224,201,160,.16)':d<0?'rgba(232,128,111,.16)':'rgba(255,255,255,.045)';
+   if(prev)s+='<rect x="'+(x-bw/2)+'" y="'+(y-18)+'" width="'+bw+'" height="24" rx="7" fill="'+fl+'"/>'+t(x,y-1.5,v,{fs:12.5,a:'middle',c:c,w:600})+t(x,y+16,p,{fs:8.5,a:'middle',c:'rgba(255,255,255,.38)'});
+   else s+='<rect x="'+(x-bw/2)+'" y="'+(y-17)+'" width="'+bw+'" height="30" rx="7" fill="'+fl+'"/>'+t(x,y+3.5,v,{fs:12.5,a:'middle',c:c,w:600})});
+  return s}
+ /* ismétlés-különbség összesen */
+ function repT(dr,x,y,dw){var c=dw>0?(dr>=0?A:T):dw<0?(dr>0?A:RED):(dr>0?A:dr<0?RED:T);return t(x,y+4,dr?(dr>0?'+':'−')+Math.abs(dr):'±0',{fs:14,a:'middle',c:c,w:600})}
+ function sumR(r){return r[3].reduce(function(a,v,i){return a+v-r[4][i]},0)}
+ function table(){var s='',y=0,OV='';
+  R.forEach(function(r,ri){var dw=r[1]-r[2],dr=sumR(r),bx=268,bw=72,bc=bx+bw/2;
+   if(ri)s+='<line x1="0" x2="340" y1="'+(y-8)+'" y2="'+(y-8)+'" stroke="'+F+'"/>';
+   OV+='<g class="trow" data-n="'+r[0]+'"><rect x="0" y="'+(y-8)+'" width="340" height="44" fill="transparent"/></g>';
+   s+=t(0,y+19.5,r[0],{fs:14.5,c:W});
+   s+='<g class="sa" data-n="'+r[0]+'">'+setbox(r,147,y+16,25,23)+'</g>';
+   s+='<g class="sb" data-n="'+r[0]+'" style="display:none">'+setbox(r,147,y+16,25,23,true)+'</g>';
+   /* középen: súlynövekedés zölden, különben az ismétlés-különbség */
+   s+=dw>0?'<text x="247" y="'+(y+15)+'" font-size="13" font-weight="600" text-anchor="middle" fill="'+GRN+'">+'+f(dw)+'</text><text x="247" y="'+(y+26)+'" font-size="8.5" text-anchor="middle" fill="'+GRN+'">kg</text>':repT(dr,247,y+16,dw);
+   /* jobb szélen a súly dobozban */
+   s+='<rect x="'+bx+'" y="'+(y-1)+'" width="'+bw+'" height="34" rx="8" fill="rgba(255,255,255,.04)"/>';
+   if(!r[1])s+=t(bc,y+20,'saját súly',{fs:10,a:'middle',c:W,w:600});
+   else if(dw<0)s+='<text x="'+bc+'" y="'+(y+13)+'" text-anchor="middle" font-size="10.5"><tspan fill="'+T+'">'+f(r[2])+' → </tspan><tspan fill="#fff" font-weight="600">'+f(r[1])+'</tspan><tspan fill="'+T+'" font-size="8.5"> kg</tspan></text>'+t(bc,y+26,'↓ −'+f(Math.abs(dw))+' kg',{fs:9,a:'middle',c:RED,w:600});
+   else s+=t(bc,y+20,f(r[1])+' kg',{fs:11.5,a:'middle',c:W,w:600});
+   y+=44});
+  return S(340,y-14,s+OV,-4)}
+ function render(){$('e3').innerHTML=table();
+  /* nyomva tartás: az adott sorban az előző edzés ismétlései */
+  document.querySelectorAll('#e3 .trow').forEach(function(g){var n=g.getAttribute('data-n'),
+    sv=function(on){document.querySelectorAll('#e3 g.sa,#e3 g.sb').forEach(function(x){if(x.getAttribute('data-n')!==n)return;x.style.display=(x.classList.contains('sb')===on)?'':'none'})};
+   g.addEventListener('touchstart',function(){sv(true)},{passive:true});g.addEventListener('touchend',function(){sv(false)});g.addEventListener('touchcancel',function(){sv(false)});
+   g.addEventListener('mousedown',function(){sv(true)});g.addEventListener('mouseup',function(){sv(false)});g.addEventListener('mouseleave',function(){sv(false)});
+   g.addEventListener('contextmenu',function(ev){ev.preventDefault()})})}
+ render();window.__tbl=function(i){R=WD[i];render()}})();
+
+/* ── Edzés nap · fent a 3 kocka: Volumen, Idő, Progresszió ── */
+(function(){var RED='#e8806f';
+ function fm(n){return String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g,' ')}
+ /* Progresszió: kis csíkok gyakorlatonként (arany = jobb, szürke = ugyanaz, piros = rosszabb) */
+ function cnt(){var el=document.querySelectorAll('#eview .kp>div')[2];if(!el)return null;var v=el.querySelector('.v'),d=el.querySelector('.d');var txt=(el.dataset.raw||((v?v.textContent:'')+'|'+(d?d.textContent:'')));el.dataset.raw=txt;var m=txt.match(/▲\s*(\d+)/),z=txt.match(/=\s*(\d+)/),n=txt.match(/▼\s*(\d+)/);return {el:el,u:m?+m[1]:0,z:z?+z[1]:0,n:n?+n[1]:0}}
+ function prog(){var c=cnt();if(!c)return;var tot=c.u+c.z+c.n,b='',st=[];
+  var ex=EX.map(function(e){var d=e[1]-e[2];return e[4]>0||d>0?1:d<0?-1:0}),eu=ex.filter(function(x){return x>0}).length,ez=ex.filter(function(x){return x===0}).length;
+  if(eu===c.u&&ez===c.z&&ex.length===tot)st=ex;else{for(var i=0;i<tot;i++)st.push(1);var pos=[4,2,5,1,3,6,0],k=0;for(var q=0;q<c.n;q++)st[pos[k++]%tot]=-1;for(var q=0;q<c.z;q++)st[pos[k++]%tot]=0}
+  st.forEach(function(x){b+='<i style="background:'+(x>0?'var(--a)':x===0?'rgba(255,255,255,.25)':RED)+'"></i>'});
+  c.el.innerHTML='<div class="l">Progresszió</div><span class="pbar">'+b+'</span><div class="d ng">'+c.u+' / '+tot+'</div>'}
+ setTimeout(prog,50);window.__pdraw=function(){var el=document.querySelectorAll('#eview .kp>div')[2];if(el)delete el.dataset.raw;prog()};
+ /* Volumen: összesen kg, alatta a többlet az előző ugyanilyen edzéshez képest */
+ window.__vsub=function(i){var c=document.querySelector('#eview .kp>div:first-child'),d=c&&c.querySelector('.d'),v=c&&c.querySelector('.v');if(!d)return;
+  v.textContent=ST.e[i].kp[0][0];v.style.color='';d.textContent=ST.e[i].gr;d.classList.add('ng');d.style.color=''};
+ /* edzésenkénti számok a WD adatokból */
+ function calc(i){var ex=mkEX(WD[i]),tn=0,u=0,z=0,n=0;ex.forEach(function(e){if(!e[7])tn+=e[1];var d=e[1]-e[2];if(e[4]>0||d>0)u++;else if(d<0)n++;else z++});
+  var g=ex.reduce(function(a,e){return a+(!e[7]&&!(e[4]>0)?e[1]-e[2]:0)},0);ST.e[i].kp[0]=[fm(tn)+' kg','összesen'];ST.e[i].gr=(g>=0?'+':'−')+fm(Math.abs(g))+' kg';
+  ST.e[i].kp[2]=["▲ "+u,'<span style="color:var(--m);margin:0 4px">= '+z+'</span><span style="color:#e8806f;margin:0 4px">▼ '+n+'</span>'];return ex}
+ for(var i=0;i<WD.length;i++)calc(i);
+ window.__wsel=function(i){var ex=calc(i);EX.splice.apply(EX,[0,EX.length].concat(ex));window.__e1();window.__tbl(i)};
+ var k=document.querySelectorAll('#eview .kp>div');k[0].querySelector('.v').textContent=ST.e[0].kp[0][0];window.__vsub(0);delete k[2].dataset.raw;window.__pdraw()})();
+
+/* ── Nem edzésnap kártyái: pihenő, futás, kihagyott nap, mai (még nem mentett) edzés ── */
+(function(){
+ function f(x){return String(x).replace('.',',')}
+ /* mindig 3 sor (üres alsó sorral is), így a nagy számok egy vonalban vannak */
+ function tile(l,v,d){return '<div><div class="l">'+l+'</div><div class="v" style="color:#fff">'+v+'</div><div class="d ng">'+(d||'&nbsp;')+'</div></div>'}
+ function card(a){return '<div class="card"><div class="kp" style="grid-template-columns:repeat('+a.length+',minmax(0,1fr))">'+a.join('')+'</div></div>'}
+ function word(w){return '<div style="padding:16px 6px!important"><div class="v" style="color:#fff">'+w+'</div></div>'}
+ function prevDone(DAYS,k,n){for(var j=k-1;j>=0;j--)if(DAYS[j].st==='done'&&DAYS[j].n===n)return DAYS[j];return null}
+ /* a legutóbbi ugyanilyen edzés sorozatai és súlyai */
+ function list(rs){var s='',y=0;rs.forEach(function(r,ri){if(ri)s+='<line x1="0" x2="340" y1="'+(y-8)+'" y2="'+(y-8)+'" stroke="'+F+'"/>';s+=t(0,y+19.5,r[0],{fs:14.5,c:W});
+   r[3].forEach(function(v,i){var x=147+i*25;s+='<rect x="'+(x-11.5)+'" y="'+(y+1)+'" width="23" height="30" rx="7" fill="rgba(255,255,255,.045)"/>'+t(x,y+20.5,v,{fs:12.5,a:'middle',c:W,w:600})});
+   var bx=268,bw=72;s+='<rect x="'+bx+'" y="'+(y-1)+'" width="'+bw+'" height="34" rx="8" fill="rgba(255,255,255,.04)"/>'+t(bx+bw/2,y+20,r[1]?f(r[1])+' kg':'saját súly',{fs:r[1]?11.5:10,a:'middle',c:W,w:600});y+=44});
+  return S(340,y-14,s,-4)}
+ window.__nod=function(D,k,DAYS){
+  if(D.st==='rest')return card([word('Pihenés')]);
+  if(D.st==='run')return card([word('Futás')]);
+  if(D.st==='miss'){var rp=k>0&&DAYS[k-1]&&DAYS[k-1].st==='miss'&&DAYS[k-1].kn===D.kn;
+   return card(['<div style="padding:16px 6px!important"><div class="l">Kihagyva</div>'+(rp?'<div class="v" style="color:#e8806f;margin-top:6px!important">✕</div>':'<div class="v" style="color:#e8806f;text-decoration:line-through;text-decoration-thickness:2px;margin-top:6px!important">'+(D.kn||'edzés')+'</div>')+'</div>'])}
+  if(D.st==='today'){var p=prevDone(DAYS,k,D.n);if(!p||p.i==null)return '';var e=ST.e[p.i];
+   return '<div class="card"><div class="kp">'+tile('Legutóbb',p.d,p.tm||'')+tile('Volumen',e.kp[0][0],'')+tile('Idő',e.kp[1][0],'')+'</div></div><div class="card">'+list(WD[p.i])+'</div>'}
+  return ''}})();
+
+/* ════ 4. KONTROLL ════ */
+(function(){var RED="#e8806f",GRN="#4cc38a",
+ /* minta adatok: Kontroll-dátumok, testsúly-átlag, becsült 1RM-ek, méretek, stagnálás (ciklus rekord nélkül) */
+ K=["máj. 18.","jún. 23.","aug. 7.","szept. 21."],BW=[76.4,76.1,75.9,75.2],
+ L=[["Fekvenyomás",[110,113.5,116.7,124.7],[0,1,0,1]],["Lehúzás",[96,99,102,108],[0,0,1,1]],["Guggolás",[140,146,153,161.7],[0,1,1,1]]],
+ LO=[["Ferde nyomás",[70,72,74,77.5]],["Vállból nyomás",[48,49.5,51,53]],["Román felhúzás",[120,125,130,133]]],
+ M=[["Bal kar",[35.8,36.2,36.6,37.0],1],["Jobb kar",[36,36.4,36.8,37.2],1],["Mellkas",[101,101.8,102.6,103.4],1],["Derék",[84,83.3,82.6,81.9],-1],["Comb",[57,57.5,58,58.5],1],["Vádli",[37,37.2,37.4,37.6],1]],
+ ST5=[["Fekvenyomás",0],["Ferde nyomás",1],["Vállból nyomás",1],["Oldalemelés",4],["Tárogatás",2],["Tricepsz fej felett",1],["Tricepsz letolás",0],["Lehúzás",1],["Melltámasztós",2],["Csigás pullover",3],["Face pull",1],["Ferde bicepsz",0],["Kalapács hajlítás",2],["Guggolás",1],["Bolgár guggolás",0],["Román felhúzás",1],["Combfeszítés",3],["Combhajlítás",1],["Vádli",2],["Hasprés",4],["Lábemelés",1]],
+ WOFF=[.3,-.2,.1,-.4,.2],KI=3;
+ var DASH='<span style="display:inline-block;width:18px;height:2px;border-radius:1px;background:var(--m);opacity:.6;vertical-align:middle"></span>';
+ function kgs(x,u){x=Math.round(x*10)/10;return (x>0?'+':x<0?'−':'±')+f1(Math.abs(x))+' '+(u||'kg')}
+ function f2(x){return x.toFixed(2).replace('.',',')}
+ function fk1(x){return (Math.round(x*10)/10).toFixed(1).replace('.',',')}
+
+ /* Becsült 1RM: 6 összetett gyakorlat, alatta a változás */
+ function k1(){var i=KI,h='<div class="sm3">';
+  [L[0],LO[0],LO[1],L[1],L[2],LO[2]].forEach(function(l){var v=l[1],d=i?v[i]-v[i-1]:0,mx=Math.max.apply(0,v.slice(0,i+1));
+   h+='<div data-name="'+l[0]+'" data-est="'+f1(v[i])+'"><div class="n">'+l[0]+'</div><div class="k">'+f1(v[i])+'<small> kg</small></div><div class="dd" style="color:'+(!i?T:d>0?A:RED)+'">'+(i?kgs(d):DASH)+'</div></div>'});
+  return h+'</div>'}
+ function realMax(n){var m=null;WD.forEach(function(g){g.forEach(function(e){if(e[0]===n&&(m===null||e[1]>m))m=e[1]})});return m}
+ function k1Bind(){var nm=document.querySelector('#k1').parentElement.querySelector('.nm'),orig=nm.textContent;
+  document.querySelectorAll('#k1 .sm3>div').forEach(function(t){var st=t.style;st.cursor='pointer';st.touchAction='none';st.webkitUserSelect='none';st.userSelect='none';st.webkitTouchCallout='none';
+   var show=function(){var n=t.getAttribute('data-name'),m=realMax(n);nm.textContent=m===null?n+' · nincs valós adat':n+' · valós rekord '+f1(m)+' kg'};
+   var hide=function(){nm.textContent=orig};
+   t.onpointerdown=show;t.onpointerup=hide;t.onpointerleave=hide;t.onpointercancel=hide;t.oncontextmenu=function(e){e.preventDefault()}})}
+
+ /* Relatív erő: 1RM ÷ testsúly, kör a célig; célnál csillag */
+ function k2(){var i=KI,s='';
+  L.forEach(function(l,k){var r=l[1][i]/BW[i],rp=i?l[1][i-1]/BW[i-1]:0,g=[2,1.5,2.5][k],cx=56+k*114,cy=64,R=40,pp=Math.min(r/g,.9999),a=pp*2*Math.PI,e=[cx+R*Math.sin(a),cy-R*Math.cos(a)];
+   s+='<circle cx="'+cx+'" cy="'+cy+'" r="'+R+'" fill="none" stroke="'+F+'" stroke-width="8"/><path d="M'+cx+','+(cy-R)+' A'+R+','+R+' 0 '+(a>Math.PI?1:0)+' 1 '+e[0].toFixed(1)+','+e[1].toFixed(1)+'" fill="none" stroke="'+A+'" stroke-width="8" stroke-linecap="round"/>';
+   if(r>=g)s+='<circle cx="'+cx+'" cy="'+cy+'" r="'+R+'" fill="none" stroke="'+A+'" stroke-width="8"/><path d="M'+cx+','+(cy-R-12)+' l3,6 6.5,1 -4.7,4.5 1.1,6.4 -5.9,-3.1 -5.9,3.1 1.1,-6.4 -4.7,-4.5 6.5,-1z" fill="'+A+'" stroke="#242424" stroke-width="2.5" stroke-linejoin="round"/>'+t(cx,cy+2,f2(r)+'×',{fs:14,a:'middle',c:W,w:600})+t(cx,cy+16,'cél '+f1(g)+'×',{fs:8.5,a:'middle',c:A});
+   else s+=t(cx,cy+2,f2(r)+'×',{fs:14,a:'middle',c:W,w:600})+t(cx,cy+16,'cél '+f1(g)+'×',{fs:8.5,a:'middle'});
+   s+=t(cx,cy+R+20,l[0],{fs:10,a:'middle',c:W});
+   s+=i?'<text x="'+cx+'" y="'+(cy+R+34)+'" font-size="9" text-anchor="middle" fill="'+T+'">előző '+f2(rp)+'× <tspan fill="'+(r>=rp?A:RED)+'" font-weight="600">'+(r>=rp?'▲':'▼')+'</tspan></text>'
+    :'<line x1="'+(cx-9)+'" x2="'+(cx+9)+'" y1="'+(cy+R+31)+'" y2="'+(cy+R+31)+'" stroke="'+T+'" stroke-width="1.6" stroke-linecap="round" opacity=".7"/>'});
+  return S(340,140,s)}
+
+ /* Testsúly: előző → most dobozokban, alatta az 5 mérés eltérése az átlagtól */
+ function k3(){var i=KI,n=i?5:1,ws=i?WOFF.map(function(o){return Math.round((BW[i]+o)*10)/10}):[BW[0]],d=i?BW[i]-BW[i-1]:0;
+  var h='<div style="display:flex;align-items:center;justify-content:center;gap:10px;margin:6px 0 4px">'+
+   '<div style="background:#1b1b1b;border-radius:14px;padding:10px 16px;text-align:center"><div class="n" style="font-size:10px;color:var(--m)">előző</div><div style="font-size:26px;font-weight:600;color:var(--m)">'+(i?fk1(BW[i-1]):'–')+'</div></div>'+
+   '<div class="ng" style="text-align:center;color:'+A+';font-weight:700;font-size:13px">'+(i?kgs(d):DASH)+'<div style="font-size:18px;color:var(--m);font-weight:400">→</div></div>'+
+   '<div style="background:#1b1b1b;border:1px solid rgba(224,201,160,.45);border-radius:14px;padding:10px 16px;text-align:center"><div class="n" style="font-size:10px;color:var(--m)">most</div><div style="font-size:26px;font-weight:600">'+fk1(BW[i])+'<small style="font-size:11px;color:var(--m)"> kg</small></div></div>'+
+   '</div><div style="height:14px"></div>';
+  /* mérések: középen az átlag, a csík színátmenettel a mérés felé */
+  var RG=Math.max(.5,Math.ceil(Math.max.apply(0,ws.map(function(v){return Math.abs(v-BW[i])}))*2)/2),c=158,sc=130/RG,rh=12,
+   s='<defs><linearGradient id="k3gr" x1="0" x2="1"><stop offset="0" stop-color="'+A+'" stop-opacity=".05"/><stop offset="1" stop-color="'+A+'" stop-opacity=".9"/></linearGradient><linearGradient id="k3gl" x1="1" x2="0"><stop offset="0" stop-color="'+A+'" stop-opacity=".05"/><stop offset="1" stop-color="'+A+'" stop-opacity=".9"/></linearGradient></defs>';
+  ws.forEach(function(v,j){var y=6+j*rh,dv=Math.round((v-BW[i])*10)/10,x=c+dv*sc;
+   s+=t(0,y+3.5,(n===1?'1. nap':(j+1)+'.'),{fs:7})+'<rect x="'+(c-sc*RG)+'" y="'+(y-2)+'" width="'+(2*sc*RG)+'" height="4" rx="3" fill="rgba(255,255,255,.045)"/>';
+   if(dv)s+='<rect x="'+Math.min(c,x)+'" y="'+(y-2)+'" width="'+Math.abs(x-c)+'" height="4" fill="url(#'+(dv>0?'k3gr':'k3gl')+')" opacity="1"/>';
+   s+='<circle cx="'+x+'" cy="'+y+'" r="3" fill="'+A+'" stroke="#232323" stroke-width="1.5"/>'+t(dv>=0?x+8:x-8,y+2.5,(dv>0?'+':dv<0?'−':'±')+fk1(Math.abs(dv)),{fs:7,a:dv>=0?'start':'end',c:A}).replace('<text','<text class="ng"')+t(340,y+3,fk1(v),{fs:8,a:'end',c:T,w:500})});
+  var yb=6+n*rh,st=RG<=.5?.25:.5,ticks=[];
+  for(var q=-RG;q<=RG+1e-9;q+=st)if(Math.abs(q)>1e-9)ticks.push(Math.round(q*100)/100);
+  s+='<line x1="'+c+'" x2="'+c+'" y1="0" y2="'+(yb-8)+'" stroke="'+A+'" stroke-width="1" opacity=".5"/>'+t(c,yb+4,'átlag',{fs:7,a:'middle',c:A});
+  s+=ticks.map(function(q){var xx=c+q*sc;return '<line x1="'+xx+'" x2="'+xx+'" y1="2" y2="'+(yb-8)+'" stroke="'+W+'" opacity=".07"/>'+t(xx,yb+4,(q>0?'+':'−')+(Math.abs(q)%.5?String(Math.abs(q)).replace('.',','):fk1(Math.abs(q)).replace(',0','')),{fs:6.5,a:'middle',c:'rgba(255,255,255,.28)'}).replace('<text','<text class="ng"')}).join('');
+  return h+S(340,yb+7,s)}
+
+ /* Méretek: cm, alatta a változás (zöld = jó irány) */
+ function k4(){var i=KI,h='<div class="sm3">';
+  M.forEach(function(r){var v=r[1],d=i?Math.round((v[i]-v[i-1])*10)/10:0,good=d*r[2]>0;
+   h+='<div><div class="n">'+r[0]+'</div><div class="k">'+f1(v[i])+'<small> cm</small></div><div class="dd ng" style="color:'+(!i||!d?T:good?GRN:RED)+'">'+(i?kgs(d,'cm'):DASH)+'</div></div>'});
+  return h+'</div>'}
+
+ /* Stagnálás: hány ciklusa nincs rekord (max 3 csík; 3 fölött „!”), a gyakorlat típusa színével */
+ function k5(){var i=KI,h='';
+  if(!i)return '<div class="nodata" style="padding:14px 0">Az első Kontrollnál még nincs mihez mérni – innen indul a számolás.</div>';
+  var TYP=function(n){var g=/Comb|Guggol|Vádli|Has|Láb|Román|Bolgár/i.test(n)?'Legs':/Lehúz|Evez|Melltámasz|pullover|bicepsz|Kalapács|Face/i.test(n)?'Pull':'Push';return ((window.__WC||{})[g])||{Push:'#E2C16F',Pull:'#C98F62',Legs:'#9E93C8'}[g]};
+  ST5.map(function(r){return [r[0],Math.max(0,r[1]-(3-i))]}).filter(function(r){return r[1]>1}).sort(function(a,b){return a[1]-b[1]}).forEach(function(r){var tc=TYP(r[0]),d='';
+   for(var q=1;q<=3;q++)d+='<i style="flex:1;height:8px;border-radius:2px;background:'+(q<=r[1]?tc:'rgba(255,255,255,.08)')+'"></i>';
+   h+='<div style="display:grid;grid-template-columns:1fr 130px 18px;gap:8px;align-items:center;padding:6px 0;font-size:12.5px;color:#fff;opacity:.85;font-weight:500;text-transform:uppercase;font-size:10px;letter-spacing:.12em"><span>'+r[0]+'</span><span style="display:flex;gap:3px">'+d+'</span><span style="text-align:center">'+(r[1]>3?'<b class="ng" style="color:'+RED+';font-size:13px;font-weight:800">!</b>':'')+'</span></div>'});
+  return h}
+
+ function render(){$('k1').innerHTML=k1();k1Bind();$('k2').innerHTML=k2();$('k3').innerHTML=k3();$('k4').innerHTML=k4();$('k5').innerHTML=k5()}
+ var prev=window.ONSTEP;window.ONSTEP=function(k){if(prev)prev(k);if(k==='k'){KI=3-SI.k;render()}};
+ render()})();
+
+/* ════ 5. BLOKK ════ */
+(function(){var R=[["Fekvenyomás",110,124.7],["Ferde nyomás",70,77.5],["Vállból nyomás",48,53],["Lehúzás",96,108],["Guggolás",140,161.7],["Román felhúzás",120,133]],X=function(v){return 96+v/170*150},s='';
+ [0,50,100,150].forEach(function(v){s+='<line x1="'+X(v)+'" x2="'+X(v)+'" y1="4" y2="126" stroke="'+F+'"/>'+t(X(v),138,v,{fs:8.5,a:'middle'})});
+ R.forEach(function(r,i){var y=i*21+14;s+=t(0,y+4,r[0],{fs:10.5,c:W})+'<line x1="'+X(r[1])+'" x2="'+(X(r[2])-6)+'" y1="'+y+'" y2="'+y+'" stroke="'+A+'" stroke-width="3" stroke-linecap="round"/><path d="M'+(X(r[2])-8)+','+(y-5)+' L'+X(r[2])+','+y+' L'+(X(r[2])-8)+','+(y+5)+'" fill="'+A+'"/>'+
+  '<circle cx="'+X(r[1])+'" cy="'+y+'" r="5" fill="'+A2+'"/>'+t(340,y+3,'+'+f1(r[2]-r[1])+' kg  ·  +'+Math.round((r[2]/r[1]-1)*100)+' %',{fs:9.5,a:'end',c:A,w:600})});
+ $('b1').innerHTML=S(340,142,s)})();
+(function(){var R=[["Testsúly (kg)",76.4,75.7],["Derék",84,82],["Kar",36,37],["Mellkas",101,103],["Comb",57,58.5],["Vádli",37,37.6]],h='<table class="mt"><tr class="h"><td></td><td>Eleje</td><td>Vége</td><td>±</td></tr>';
+ R.forEach(function(r){var d=r[2]-r[1];h+='<tr><td>'+r[0]+'</td><td>'+f1(r[1])+'</td><td>'+f1(r[2])+'</td><td class="d">'+(d>0?'▲ ':'▼ ')+sg(d)+'</td></tr>'});$('b2').innerHTML=h+'</table>'})();
+(function(){var v=[41200,41800,42300,42900,43300,43700,44100,44500,43870,19000],s=hatch+grid(340,8,128,2),sc=120/46000;
+ v.forEach(function(q,i){var x=8+i*33,h=q*sc,dl=i===9;s+='<rect x="'+x+'" y="'+(128-h)+'" width="24" height="'+h+'" rx="5" fill="'+(dl?'url(#h)':A)+'" opacity="'+(dl?1:.6)+'" stroke="'+(dl?A:'none')+'" stroke-width=".8"/>'+t(x+12,142,dl?'D':(i+1)+'.',{fs:8.5,a:'middle',c:dl?A:T})});
+ s+=pl([[20,128-41200*sc-10],[284,128-44500*sc-10]],{d:'5 4',c:W,w:1.5,op:.8})+t(286,128-44500*sc-14,'trend +8%',{fs:9,c:W});$('b3').innerHTML=S(340,146,s)})();
+(function(){var R=[["Volumen",41600,42900],["Fekvenyomás",116.7,119.2],["Lehúzás",102,104.1],["Guggolás",153,156.8]],s='';
+ R.forEach(function(r,i){var x=i*85,mx=Math.max(r[1],r[2]),h1=r[1]/mx*86,h2=r[2]/mx*86;s+='<rect x="'+(x+14)+'" y="'+(100-h1)+'" width="22" height="'+h1+'" rx="5" fill="'+A2+'"/><rect x="'+(x+40)+'" y="'+(100-h2)+'" width="22" height="'+h2+'" rx="5" fill="'+A+'"/>'+
+  t(x+38,116,r[0],{fs:9,a:'middle',c:W})+t(x+38,130,'+'+f1((r[2]/r[1]-1)*100)+'%',{fs:10,a:'middle',c:A,w:600})});
+ s+='<rect x="0" y="140" width="10" height="9" rx="2" fill="'+A2+'"/>'+t(14,148,'előtte')+'<rect x="60" y="140" width="10" height="9" rx="2" fill="'+A+'"/>'+t(74,148,'utána');$('b4').innerHTML=S(340,152,s)})();
+(function(){var R=[["15–16",1.2,6],["16–17",2.6,14],["17–18",2.1,16],["18–19",0.6,8],["19–20",-0.4,3]],s=hatch+'<line x1="0" x2="340" y1="96" y2="96" stroke="'+T+'"/>';
+ R.forEach(function(r,i){var x=10+i*66,h=r[1]*28,best=i===1;s+=(h>=0?'<rect x="'+x+'" y="'+(96-h)+'" width="44" height="'+h+'" rx="5" fill="'+A+'" opacity="'+(best?1:.5)+'"/>':'<rect x="'+x+'" y="96" width="44" height="'+(-h)+'" rx="5" fill="url(#h)" stroke="'+A+'" stroke-width=".8"/>')+
+  t(x+22,(h>=0?96-h-6:96-h+14),sg(r[1])+'%',{fs:10,a:'middle',c:best?A:W,w:600})+(best?t(x+22,96-h-20,'★ legjobb',{fs:8.5,a:'middle',c:A}):'')+t(x+22,128,r[0],{fs:9,a:'middle',c:W})+t(x+22,141,r[2]+' edzés',{fs:8.5,a:'middle'})});
+ $('b5').innerHTML=S(340,170,s,-24)})();
+(function(){var cols=10,cw=26,g=3,SL=[1,1,1,0,1,2,1,2,0],s='';for(var c=0;c<cols;c++)for(var d=0;d<9;d++){var k=SL[d],x=20+c*(cw+g),y=d*(18+g),dl=c===9;
+ if(k===1)s+='<rect x="'+x+'" y="'+y+'" width="'+cw+'" height="18" rx="4" fill="'+A+'" opacity="'+(dl?.18:.3+Math.abs(Math.sin(c*9+d))*.7)+'"/>';
+ else if(k===2)s+='<rect x="'+x+'" y="'+y+'" width="'+cw+'" height="18" rx="4" fill="rgba(255,255,255,.04)"/><circle cx="'+(x+cw/2)+'" cy="'+(y+9)+'" r="3.5" fill="none" stroke="'+A+'" stroke-width="1.2" opacity=".8"/>';
+ else s+='<rect x="'+x+'" y="'+y+'" width="'+cw+'" height="18" rx="4" fill="rgba(255,255,255,.04)"/>'}
+ for(var d=0;d<9;d++)s+=t(0,d*21+13,(d+1)+'.',{fs:8.5});for(var c=0;c<cols;c++)s+=t(20+c*(cw+g)+cw/2,9*21+12,c===9?'D':(c+1)+'.',{fs:8.5,a:'middle',c:c===9?A:T});
+ $('b6').innerHTML=S(20+cols*(cw+g),9*21+16,s)})();
+(function(){var N=[["Push",[12700,12850,12900,13100,5600,13300,13400,13550,13620,13700]],["Pull",[12800,12900,13000,13050,5600,13150,13200,13260,13300,13320]],["Legs",[15800,16000,16150,16300,7500,16500,16700,16900,17050,17300]]],s='';
+ N.forEach(function(n,i){var y=i*58,v=n[1],mn=5000,mx=Math.max.apply(null,v),P=v.map(function(q,j){return [70+j*29,y+46-(q-mn)/(mx-mn)*38]});
+  s+=t(0,y+28,n[0],{fs:11,c:W})+t(0,y+42,'+'+f1((v[9]/v[5]-1)*100)+'% · 5 ciklus',{fs:8.5,c:A})+area(P,y+48,'gp'+i)+pl(P)+'<circle cx="'+P[9][0]+'" cy="'+P[9][1]+'" r="4.5" fill="'+A+'"/>'+t(P[4][0],P[4][1]+12,'D',{fs:8.5,a:'middle'})});
+ $('c4').innerHTML=S(340,170,s)})();
+
+/* asztali gép: nyilak és pöttyök a blokkok közti váltáshoz */
+document.addEventListener('keydown',function(e){var on=document.querySelector('.pane.on');if(!on||on.id!=='p-b')return;if(e.key==='ArrowRight')step('b',1);else if(e.key==='ArrowLeft')step('b',-1)});
+/* ════ 6. LÉPTETÉS: oldalra húzás a fejlécen ════ */
+/* fejléc kirajzolása: cím, dátum (kontrollnál előző ← · → következő), pöttyök; blokknál a számok */
+function stepR(k){var h=document.querySelector('.hdr[data-s="'+k+'"]'),d=ST[k][SI[k]];if(window.ONSTEP)ONSTEP(k);
+ h.querySelector('.t1').textContent=d.t1;
+ h.querySelector('.t2').innerHTML=k==='k'?(function(){var HM=['jan.','febr.','márc.','ápr.','máj.','jún.','júl.','aug.','szept.','okt.','nov.','dec.'],dt=d.t2.split(' · ')[0],pm=d.t2.match(/előző: (.*)$/),nx;
+   if(SI[k]>0)nx=ST[k][SI[k]-1].t2.split(' · ')[0];else{var q=dt.split(' '),mi=HM.indexOf(q[0]),dd=new Date(2026,mi,parseInt(q[1])+45);nx=HM[dd.getMonth()]+' '+dd.getDate()+'.'}
+   return dt+'<div style="font-size:.78em;opacity:.55;margin-top:3px;letter-spacing:.06em;display:grid;grid-template-columns:1fr auto 1fr;gap:10px;align-items:center"><span style="text-align:right">'+(pm?'← '+pm[1]:'')+'</span><span style="opacity:.5">·</span><span style="text-align:left">'+nx+' →</span></div>'})():d.t2.replace('{{NAP}}',String(Math.floor((Date.now()-new Date(2026,7,16).getTime())/864e5)+1));
+ if(k==='c'){var CUR=ST.c.length,VW=CUR-SI.c,dh='';for(var q=1;q<=10;q++)dh+='<i class="'+(q===VW&&q!==CUR?'on':q===CUR?'now':q<CUR?'past':'')+'"></i>';h.querySelector('.dots').innerHTML=dh}
+ else h.querySelector('.dots').innerHTML=ST[k].map(function(_,i){return '<i class="'+((k==='b'?i:ST[k].length-1-i)===SI[k]?'on':'')+'"></i>'}).join("");if(k==='b')h.querySelectorAll('.dots i').forEach(function(el,i){el.style.cursor='pointer';el.onclick=function(){SI.b=i;stepR('b')}});
+ if(d.kp)document.querySelectorAll('#p-'+k+' .kp>div').forEach(function(c,i){c.querySelector('.v').textContent=d.kp[i][0];c.querySelector('.d').innerHTML=d.kp[i][1]})}
+function step(k,dir){var n=SI[k]-(k==='b'?-dir:dir);if(n<0||n>=ST[k].length)return;var pane=document.getElementById('p-'+k),mid=document.querySelector('.hdr[data-s="'+k+'"] .mid');
+ pane.classList.add('fade');mid.style.opacity='0';setTimeout(function(){SI[k]=n;stepR(k);pane.classList.remove('fade');mid.style.opacity='1'},200)}
+/* húzás: ciklusnál a fejlécen vagy a körön, máshol a fejlécen; gyors, vízszintes mozdulat kell */
+document.querySelectorAll('.hdr').forEach(function(h){var k=h.dataset.s,tg=k==='c'?document.getElementById('p-c'):h,sx=null,sy=null,st0=0;stepR(k);
+ tg.addEventListener('touchstart',function(e){var ok=k!=='c'||!!(e.target.closest&&e.target.closest('.hdr,.ering'));sx=ok?e.touches[0].clientX:null;sy=e.touches[0].clientY;st0=Date.now()},{passive:true});
+ tg.addEventListener('touchend',function(e){if(sx==null)return;var dx=e.changedTouches[0].clientX-sx,dy=e.changedTouches[0].clientY-sy;sx=null;if(Math.abs(dx)>80&&Math.abs(dx)>Math.abs(dy)*2.5&&Date.now()-st0<700)step(k,dx<0?1:-1)})});
+
+/* ════ 7. REKORDOK ════ */
+/* ── Rekordok: a fejléc alatti pill, koppintásra lenyíló lista napsávokra bontva ── */
+(function(){var D=[["Fekvenyomás","80×10","82,5×10",1],["Ferde nyomás","36×10","36×11",5],["Vállból nyomás","27×10","27×11",5],["Vádli","85×18","90×18",3],["Guggolás","117,5×11","120×11",7],["Lehúzás","77,5×10","80×10",8],["Ferde bicepsz","12×11","12×12",8],["Tricepsz fej felett","22×14","24×14",1],["Tricepsz letolás","27,5×14","30×14",1],["Melltámasztós","57,5×11","60×11",17],["Bolgár guggolás","22×12","24×12",16],["Combhajlítás csigán","37,5×14","40×14",16],["Face pull","20×14","20×15",17],["Kalapács hajlítás","16×11","16×12",18],["Tárogatás","16×14","18×14",14],["Ülő combfeszítés","52,5×15","55×15",22],["Csigás pullover","22,5×12","25×12",26],["Román felhúzás","97,5×10","100×10",36],["Oldalemelés","11×14","12×14",40]],h='';
+ D=D.filter(function(r){return r[1].split('×')[0]!==r[2].split('×')[0]});D.sort(function(a,b){return a[3]-b[3]});window.__RD=D;
+ D.forEach(function(r){
+  h+='<div class="rw'+(r[3]>27?' old':'')+'" data-age="'+r[3]+'"><div class="r"><b>'+r[0]+'</b><span><span style="color:'+A+'">'+r[2].split('×')[0]+' kg</span> · '+r[3]+' napja</span></div></div>'});
+ var box=document.querySelector('#reclist .in');box.innerHTML=h;
+ /* napsávok egyenként, léptetve: ‹ 0–9 nap › */
+ var BANDS=[["0–9 nap",0,10],["10–18 nap",10,19],["19+ nap",19,1e9]],bi=0,rws=[].slice.call(box.querySelectorAll('.rw'));
+ var nav=document.createElement('div');nav.className='bnav';nav.innerHTML='<button data-d="-1">‹</button><div><b></b><span></span><i class="bd"></i></div><button data-d="1">›</button>';box.insertBefore(nav,box.firstChild);
+ function band(){var B=BANDS[bi],n=0;rws.forEach(function(w){var a=+w.dataset.age,on=a>=B[1]&&a<B[2];w.style.display=on?'':'none';if(on)n++});
+  nav.querySelector('b').textContent=B[0];nav.querySelector('span').textContent=n+' rekord';nav.querySelector('.bd').innerHTML=BANDS.map(function(_,k){return '<u class="'+(BANDS.length-1-k===bi?'on':'')+'"></u>'}).join("");
+  var bs=nav.querySelectorAll('button');bs[0].disabled=bi===BANDS.length-1;bs[1].disabled=bi===0}
+ nav.querySelectorAll('button').forEach(function(bt){bt.onclick=function(e){e.stopPropagation();var n=bi-(+bt.dataset.d);if(n<0||n>=BANDS.length)return;box.classList.add('bfade');setTimeout(function(){bi=n;band();box.classList.remove('bfade')},180)}});
+ var tsx=null;box.addEventListener('touchstart',function(e){tsx=e.touches[0].clientX},{passive:true});box.addEventListener('touchend',function(e){if(tsx==null)return;var dx=e.changedTouches[0].clientX-tsx;tsx=null;if(Math.abs(dx)>50){var bt=nav.querySelectorAll('button')[dx<0?1:0];if(!bt.disabled)bt.click()}});
+ band();
+ var b=document.getElementById('recs'),l=document.getElementById('reclist');b.onclick=function(){b.classList.toggle('open');l.classList.toggle('open');
+  /* nyitás/zárás közben a kör melletti ikonok követik a lista alját */
+  var t0=Date.now();(function f(){if(window.__navplace)window.__navplace();if(Date.now()-t0<750)requestAnimationFrame(f)})()}})();
+
+/* ── Rekord-pill: a legfrissebb rekord (azonos napon az edzés sorrendje szerinti első) ── */
+(function(){var r=document.getElementById('recs'),RD=window.__RD||[],a0=RD[0][3],
+  ORDN=[].concat(WD[0],WD[2],WD[1]).map(function(x){return x[0]}),
+  td=RD.filter(function(x){return x[3]===a0}).sort(function(a,b){return ORDN.indexOf(a[0])-ORDN.indexOf(b[0])}),x=td[0];
+ r.innerHTML='<span class="st">★</span><b>'+x[0]+'</b><span class="n">'+x[2].split('×')[0]+' kg</span><span class="sep"></span><span class="w">'+x[3]+' napja</span>'})();
+
+/* ════ 8. CIKLUS ════ */
+/* ════ CIKLUS · a 9 napos kör ════
+   egy napra koppintva annak az edzése, a közepére koppintva a ciklus összesítése */
+(function(){
+ /* nap-típusok színei (más blokkok is ezt használják: window.__WC) */
+ var WC={Push:'#E2C16F',Pull:'#C98F62',Rest:'#7A7D82',Legs:'#9E93C8',Z2:'#6FA8DC','Tempó':'#4E6CA8','Pull+Z2':'#C98F62'};window.__WC=WC;
+ /* minta adatok: a 7. ciklus napjai; régebbi ciklusok a tervből (PLAN) épülnek, kimaradásokkal (SLIP) */
+ var D7=[{n:"Push",d:"okt. 9.",tm:"17:42–18:45",st:"done",i:3},{n:"Pull",d:"okt. 10.",tm:"11:05–11:56",st:"done",i:2},{n:"Legs",d:"okt. 11.",tm:"16:56–18:00",st:"done",i:1},{n:"Rest",d:"okt. 12.",st:"rest"},
+  {n:"Push",d:"okt. 13.",tm:"14:10–15:15",st:"done",i:0},{n:"Z2",d:"okt. 14.",st:"run"},{n:"Pull",d:"okt. 15.",st:"today"},{n:"Tempó",d:"okt. 16.",st:"run"},{n:"Rest",d:"okt. 17.",st:"rest"}],
+  ST0=[[2026,9,9],[2026,8,30],[2026,8,21],[2026,8,12],[2026,8,3],[2026,7,25],[2026,7,16]],HO=["jan.","febr.","márc.","ápr.","máj.","jún.","júl.","aug.","szept.","okt.","nov.","dec."],
+  PLAN=["Push","Pull","Legs","Rest","Push","Z2","Pull","Tempó","Rest"],SLIP={1:[6,1],4:[2,3],5:[1,4]},TM=["17:05–18:09","16:40–17:38","14:20–15:31","11:10–12:16","16:55–17:56"];
+ function ci(){return (typeof SI!=="undefined"&&SI)?SI.c:0}
+ function carry(c){if(c>=ST0.length)return [];return build(c,1).slice(9).filter(function(o){return o.st!=='rest'&&o.st!=='miss'}).map(function(o){return o.n})}
+ function build(c,full){if(!c)return D7;if(!full){window.__RAB=window.__RAB||{};window.__RAB[c]=0}var a=ST0[c],sl=SLIP[c],L=[],CR=carry(c+1),Q=CR.map(function(n){return {n:n,car:1}}).concat(PLAN.map(function(n){return {n:n}})),lag=CR.length,w=0,day=0;function dd(o){var d=new Date(a[0],a[1],a[2]+o);return HO[d.getMonth()]+' '+d.getDate()+'.'}
+  while(day<9){if(sl&&day===sl[0]&&!L.some(function(o){return o.st==='miss'})){for(var q=0;q<sl[1]&&day<9;q++){L.push({n:"✕",d:dd(day),st:"miss",kn:(Q[0]&&Q[0].n==="Rest"&&Q[1]?Q[1].n:(Q[0]?Q[0].n:""))});day++;lag++}continue}
+   if(!Q.length)break;var it=Q.shift();
+   if(it.n==='Rest'&&lag>0){lag--;if(day<9&&!full){window.__RAB=window.__RAB||{};window.__RAB[c]=(window.__RAB[c]||0)+1}continue}
+   if(it.n==='Z2'&&lag>0){var pi=-1;for(var z=0;z<Q.length;z++)if(Q[z].n==='Pull'){pi=z;break}if(pi>=0){Q[pi].n='Pull+Z2';lag--;continue}}
+   var o={n:it.n,d:dd(day)};if(it.car)o.car=1;if(it.n==='Rest')o.st='rest';else if(it.n==='Z2'||it.n==='Tempó')o.st='run';else{o.st='done';o.i=it.n==='Legs'?1:/Pull/.test(it.n)?2:(w===0?3:0);o.tm=TM[(w+c)%5];w++}L.push(o);day++}
+  if(full)Q.forEach(function(it){L.push({n:it.n,st:it.n==='Rest'?'rest':'x'})});return full?L:L.slice(0,9)}
+ var DAYS=D7,sel=4,MODE='e',cx=150,cy=150,R0=72,R1=112,DARK='#1b1b1b',ARR='↪︎ ';
+ function pt(a,r){return [(cx+r*Math.cos(a)).toFixed(1),(cy+r*Math.sin(a)).toFixed(1)]}
+ function arc(a0,a1,ro,ri){var q=[pt(a0,ro),pt(a1,ro),pt(a1,ri),pt(a0,ri)];return 'M'+q[0]+' A'+ro+','+ro+' 0 0 1 '+q[1]+' L'+q[2]+' A'+ri+','+ri+' 0 0 0 '+q[3]+' Z'}
+ /* „Pull+Z2” nap: Pull+ felirat és egy Z2 kapszula egy sorban */
+ function pullZ2(d,m,zc){var PW=(d.car?39.5:25),ZW=22,TW=PW+2+ZW,x0=+m[0]-TW/2,yb=+m[1],zx=x0+PW+2+ZW/2,dx=zx-cx,dy=yb-cy,rz=Math.sqrt(dx*dx+dy*dy),az=Math.atan2(dy,dx),da=(ZW/2-6)/rz,q1=pt(az-da,rz),q2=pt(az+da,rz);
+  return t(x0,yb+3.8,(d.car?ARR:'')+'Pull+',{fs:10.5,a:'start',c:DARK,w:600})+'<path d="M'+q1+' A'+rz+','+rz+' 0 0 1 '+q2+'" fill="none" stroke="'+zc+'" stroke-width="13" stroke-linecap="round"/>'+t(zx,yb+3,'Z2',{fs:8.5,a:'middle',c:DARK,w:700})}
+ function draw(){var s='',N=DAYS.length,cc=ci();
+  /* a következő ciklus halvány külső köre, ha átcsúszott bele edzés */
+  var NX=cc>1?build(cc-1):null;
+  if(NX&&NX.some(function(o){return o.car}))NX.forEach(function(o,k){var a0=k/9*2*Math.PI-Math.PI/2+.035,a1=(k+1)/9*2*Math.PI-Math.PI/2-.035,on=!!o.car,mm=pt((a0+a1)/2,130);
+   s+='<path d="'+arc(a0,a1,142,118)+'" fill="'+(WC[o.n]||'#3a3a3a')+'" opacity="'+(on?1:.22)+'"/>';
+   s+=t(mm[0],+mm[1]+3,o.n,{fs:8,a:'middle',c:on?DARK:'rgba(255,255,255,.35)',w:on?600:400})});
+  /* a 9 nap szeletei */
+  DAYS.forEach(function(d,k){var a0=k/N*2*Math.PI-Math.PI/2+.035,a1=(k+1)/N*2*Math.PI-Math.PI/2-.035,on=MODE==='e'&&k===sel,
+    tc=WC[d.n]||A,TD=d.st==='today',MS=d.st==='miss',CL=d.st==='done'||((d.st==='run'||d.st==='rest')&&WC[d.n]),
+    RP=MS&&k>0&&DAYS[k-1]&&DAYS[k-1].st==='miss'&&DAYS[k-1].kn===d.kn,
+    fill=CL?tc:'rgba(255,255,255,.06)',op=1,SEGD=arc(a0,a1,R1,R0),m=pt((a0+a1)/2,(R0+R1)/2),lab,col;
+   if(TD){fill=tc;op=.55}                        /* mai nap: halvány, lüktet */
+   if(MS)fill='rgba(255,255,255,.05)';           /* kimaradt nap */
+   s+='<g class="sg" data-k="'+k+'">'+(on&&!TD?'<path d="'+SEGD+'" fill="'+fill+'" filter="url(#selglow)" opacity=".9"/>':'')+'<path class="seg'+(TD?' tdp':'')+'" d="'+SEGD+'" fill="'+fill+'" opacity="'+op+'" stroke="none" stroke-width="1.2"></path>';
+   if(d.n==='Pull+Z2')s+=pullZ2(d,m,WC.Z2||A);
+   /* kimaradt nap: a kimaradt edzés neve áthúzva (ismétlésnél csak ✕) */
+   if(MS&&d.kn&&!RP)s+='<line x1="'+(+m[0]-d.kn.length*3.2)+'" x2="'+(+m[0]+d.kn.length*3.2)+'" y1="'+(+m[1]+0.5)+'" y2="'+(+m[1]+0.5)+'" stroke="#e8806f" stroke-width="1.6" stroke-linecap="round"/>';
+   if(MS){lab=RP?'✕':(d.kn||'✕');col=RP?'rgba(232,128,111,.6)':'#e8806f'}
+   else{lab=(d.car?ARR:'')+(d.n==='Pull+Z2'?'':d.n);col=CL||TD?DARK:T}
+   s+=t(m[0],+m[1]+4,lab,{fs:10.5,a:'middle',c:col,w:MS||CL||TD?600:400})+'</g>'});
+  /* középső kör */
+  s='<defs><filter id="selglow" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="7"/></filter></defs>'+s;
+  s+='<defs><radialGradient id="cgx" cx="50%" cy="40%" r="60%"><stop offset="0" stop-color="'+A+'" stop-opacity=".16"/><stop offset="1" stop-color="'+A+'" stop-opacity="0"/></radialGradient><clipPath id="ccl"><circle cx="'+cx+'" cy="'+cy+'" r="'+(R0-2)+'"/></clipPath></defs>'+
+   '<circle cx="'+cx+'" cy="'+cy+'" r="'+(R0-2)+'" fill="#1b1b1b"/><circle class="ctr" cx="'+cx+'" cy="'+cy+'" r="'+(R0-2)+'" fill="url(#cgx)" stroke="none" stroke-opacity="1" stroke-width="1.5"/>';
+  if(MODE==='e'){/* kiválasztott nap: dátum, alatta idő vagy a hét napja */
+   var D=DAYS[sel],MH={'jan.':0,'febr.':1,'márc.':2,'ápr.':3,'máj.':4,'jún.':5,'júl.':6,'aug.':7,'szept.':8,'okt.':9,'nov.':10,'dec.':11},dp=D.d.split(' '),
+    wd=['vasárnap','hétfő','kedd','szerda','csütörtök','péntek','szombat'][new Date(2026,MH[dp[0]],parseInt(dp[1])).getDay()];
+   s+=t(cx,cy-2,D.d,{fs:15,a:'middle',c:D.st==='miss'?'#e8806f':W,w:600})+(D.tm?t(cx,cy+16,D.tm,{fs:10.5,a:'middle'}):t(cx,cy+16,wd,{fs:10.5,a:'middle',c:T}))}
+  else s+=t(cx,cy+8,ST.c[cc].t1.split(' ')[0],{fs:40,a:'middle',c:A,w:700})+t(cx,cy+26,'C I K L U S',{fs:8.5,a:'middle'});
+  if(MODE==='c'&&window.__cyc)setTimeout(function(){window.__cyc(ci(),DAYS)},0);
+  document.getElementById('ering').innerHTML=S(300,300,s);
+  document.querySelectorAll('#ering g.sg').forEach(function(g){g.style.cursor='pointer';g.onclick=function(){var k=+g.dataset.k;if(MODE==='e'&&k===sel)return;pick(k)}});
+  var ctr=document.querySelector('#ering .ctr');ctr.onclick=function(){if(MODE!=='c'&&ci()!==0)cyc()};ctr.style.cursor=ci()===0?'default':'pointer'}
+ /* nap ↔ ciklus nézet váltása rövid áttűnéssel */
+ function swap(fn){var ev=document.getElementById('eview'),cv=document.getElementById('cview');ev.style.opacity=cv.style.opacity='.25';
+  setTimeout(function(){fn();ev.style.opacity=cv.style.opacity='1'},180)}
+ function cyc(){swap(function(){MODE='c';draw();document.getElementById('eview').style.display='none';document.getElementById('cview').style.display=''})}
+ function pick(k){swap(function(){MODE='e';sel=k;draw();var D=DAYS[k],pane=document.getElementById('eview');pane.style.display='';document.getElementById('cview').style.display='none';
+   var cards=[].slice.call(pane.querySelectorAll('.card')),nd=document.getElementById('enodata');
+   if(D.st==='done'){/* edzésnap: a kártyák az adott edzés adataival */
+    if(window.__wsel)window.__wsel(D.i);var e=ST.e[D.i];cards.forEach(function(c){c.style.display=''});if(nd)nd.style.display='none';
+    pane.querySelector('.kp').querySelectorAll(':scope>div').forEach(function(c,i){if(!e.kp[i])return;var vv=c.querySelector('.v'),dd=c.querySelector('.d');if(!vv||!dd){c.innerHTML='<div class="l"></div><div class="v"></div><div class="d"></div>';vv=c.querySelector('.v');dd=c.querySelector('.d')}vv.textContent=e.kp[i][0];dd.innerHTML=e.kp[i][1];if(i===2)delete c.dataset.raw});
+    window.__vsub&&window.__vsub(D.i);if(window.__pdraw)setTimeout(window.__pdraw,0)}
+   else{/* nem edzésnap: rövid szöveg vagy a __nod kártyái */
+    cards.forEach(function(c){c.style.display='none'});if(!nd){nd=document.createElement('div');nd.id='enodata';nd.className='card nodata';pane.appendChild(nd)}nd.style.display='';
+    nd.className='card nodata';var rich=window.__nod&&window.__nod(D,k,DAYS);if(rich){nd.className='';nd.innerHTML=rich}else nd.innerHTML=D.st==='rest'?'Pihenőnap – ezen a napon nincs edzés.':D.st==='run'?'Futás ('+D.n+') – ezt az app nem látja, az adatai az órádon vannak.':D.st==='miss'?'Kihagyott nap – innen minden egy nappal később jött.':'Ez a mai edzés – mentés után itt jelenik meg az összegzése.'}})}
+ /* belépés egy ciklusba: a mostaniban a mai nap (ha nincs, az utolsó edzésnap), a régebbiekben az összesítés */
+ function enter(){var c=ci();DAYS=build(c);if(c>0){cyc();return}
+  var k=-1;DAYS.forEach(function(d,j){if(d.st==='today')k=j});if(k<0)DAYS.forEach(function(d,j){if(d.st==='done')k=j});
+  MODE='e';sel=k;pick(k)}
+ var prev=window.ONSTEP;window.ONSTEP=function(k){if(prev)prev(k);if(k==='c'&&window.__ringReady)enter()};
+ draw();window.__ringReady=true;setTimeout(enter,0);
+})();
+
+/* ── Fejléc a mostani ciklusnál: a dátum alatt 9 pötty (kész napok, ma lüktet) ── */
+(function(){
+ function hdr(){var dz=document.querySelector('.hdr[data-s="c"] .dots'),cur=((typeof SI!=="undefined"&&SI)?SI.c:0)===0;if(dz)dz.style.display=cur?'none':'';if(!cur)return;
+  var t2=document.querySelector('.hdr[data-s="c"] .t2');if(!t2)return;
+  var d='';for(var i=0;i<9;i++)d+='<i class="'+(i<6?'on':i===6?'now':'')+'"></i>';
+  t2.innerHTML='okt. 9. – okt. 17.<div class="hdots">'+d+'</div>'}
+ var prev=window.ONSTEP;window.ONSTEP=function(k){if(prev)prev(k);if(k==='c')setTimeout(hdr,0)};setTimeout(hdr,0)})();
+
+/* ── a mai nap szelete és a mostani ciklus pöttye lassan lüktet (4,5 mp) ── */
+(function(){function f(){var t=(Date.now()%4500)/4500,p=t<.4?.5-.5*Math.cos(Math.PI*t/.4):.5+.5*Math.cos(Math.PI*(t-.4)/.6);
+  document.querySelectorAll('.hdots i.now,.hdr[data-s=c] .dots i.now').forEach(function(d){d.style.opacity=(.2+.8*p).toFixed(3)});
+  document.querySelectorAll('#ering .tdp').forEach(function(g){g.setAttribute('opacity',(.45+.45*p).toFixed(3))});
+  requestAnimationFrame(f)}
+ requestAnimationFrame(f)})();
+
+/* ════ CIKLUS · összesítés (a kör közepére koppintva, régebbi ciklusoknál alapból) ════ */
+(function(){
+ var GRP={"Fekvenyomás":"Mell","Ferde nyomás":"Mell","Tárogatás":"Mell","Vállból nyomás":"Váll","Oldalemelés":"Váll","Face pull":"Váll","Tricepsz fej felett":"Tricepsz","Tricepsz letolás":"Tricepsz","Lehúzás":"Hát","Melltámasztós":"Hát","Csigás pullover":"Hát","Ferde bicepsz":"Bicepsz","Kalapács hajlítás":"Bicepsz","Guggolás":"Comb","Bolgár guggolás":"Comb","Combfeszítés":"Comb","Román felhúzás":"Combhajlító","Combhajlítás":"Combhajlító","Vádli":"Vádli","Hasprés":"Has","Lábemelés":"Has"};
+ var GT={"Mell":"Push","Váll":"Push","Tricepsz":"Push","Hát":"Pull","Bicepsz":"Pull","Comb":"Legs","Combhajlító":"Legs","Vádli":"Legs","Has":"Legs"};
+ var GRN='#4cc38a',RED='#e8806f',GOLD='#e0c9a0';
+ function hsh(x){var h=0;for(var i=0;i<x.length;i++)h=(h*31+x.charCodeAt(i))%9973;return h}
+ function f1(x){return (Math.round(x*10)/10).toFixed(1).replace('.',',')}
+ function fm(n){return String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g,' ')}
+ function pctS(x){return (x>0?'+':x<0?'−':'±')+f1(Math.abs(x))+' %'}
+ function tile(l,v,d){return '<div><div class="l">'+l+'</div><div class="v" style="color:#fff">'+v+'</div><div class="d ng">'+d+'</div></div>'}
+ /* minta: egy edzés gyakorlatai a ciklushoz (az EX formátumában) */
+ function rows(set,c){return set.map(function(r){var h=hsh(r[0]),wu=((h+c)%5===0)&&r[1]>0,pct=((h*7+c*13)%17)/2-2.5,bw=!r[1],w2=r[2]||r[1]||1,dw=wu?(w2>=40?2.5:w2>=15?1:1):0,vp=1000,vn=wu?950:1000*(1+pct/100);return [r[0],vn,vp,'',dw,0,r[0],bw,w2+dw,w2]})}
+ function cnt(DAYS){var o={miss:0,car:0,pz:0,tms:[]};DAYS.forEach(function(d){if(d.st==='miss')o.miss++;if(d.car)o.car++;if(d.n==='Pull+Z2')o.pz++;if(d.st==='done'&&d.tm)o.tms.push([d.n,d.tm])});return o}
+ function HM(m){var h=Math.floor(m/60),mm=m%60;return h?h+' ó'+(mm?' '+mm+' p':''):mm+' p'}
+
+ window.__cyc=function(c,DAYS){var $=function(id){return document.getElementById(id)},WCc=window.__WC||{};
+  var VOL=function(q){return 30200+q*420+((q*7919)%900)-450},cc=cnt(DAYS),seed=c+1,qn=ST.c.length-c,vol=VOL(qn),dv=qn>1?VOL(qn)-VOL(qn-1):((seed*389)%900)-250,tm=58+((seed*7)%9),dtm=((seed*5)%7)-3;
+  var all=[].concat(rows(WD[0],c),rows(WD[2],c),rows(WD[1],c)),up=all.filter(function(e){return e[4]>0||e[1]>e[2]}).length;
+  var nW=cc.tms.length||5,tot=tm*nW,dtot=dtm*nW+((seed*11)%20)-8;
+
+  function sq(s){return s.replace('<div>','<div style="border-bottom-left-radius:0;border-bottom-right-radius:0">')}
+  /* 1. kártya: Volumen · Összes idő · Progresszió / Leggyengébb · Átlag idő · Legerősebb */
+  var GA=[['Push',WD[0]],['Pull',WD[2]],['Legs',WD[1]]].map(function(g){var rr=rows(g[1],c).filter(function(e){return !(e[4]>0)}),av=rr.length?rr.reduce(function(x,e){return x+(e[1]-e[2])/e[2]*100},0)/rr.length:0;return {n:g[0],_p:Math.round(av*10)/10}}),
+   best=GA.reduce(function(a,b){return b._p>a._p?b:a}),worst=GA.reduce(function(a,b){return b._p<a._p?b:a});
+  var bt=function(l,d){return '<div><div class="l">'+l+'</div><div class="v" style="color:#fff">'+d.n+'</div><div class="d ng" style="color:'+(d._p>0?GRN:d._p<0?RED:'var(--m)')+'!important">'+(d._p>=0?'+':'−')+f1(Math.abs(d._p))+' %</div></div>'},
+   pm=function(x){return (x>0?'+':x<0?'−':'±')+Math.abs(x)+' p'};
+  $('cs1').innerHTML='<div class="kp">'+tile('Volumen',fm(vol)+' kg',(dv>=0?'+':'−')+fm(Math.abs(dv))+' kg')+tile('Összes idő',HM(tot),pm(dtot))+tile('Progresszió',up+' / '+all.length,'gyakorlat')+'</div>'+
+   '<div class="kp" style="margin-top:6px">'+sq(bt('Leggyengébb',worst))+tile('Átlag idő',HM(tm),pm(dtm)).replace('<div>','<div style="margin-bottom:6px">')+sq(bt('Legerősebb',best))+'</div>';
+
+  /* 2. kártya: 3 leggyengébb / 3 legerősebb gyakorlat, alatta edzésenként a volumen-változás */
+  var pc=function(e){return e[4]>0?e[4]/e[9]*100:(e[1]-e[2])/e[2]*100},srt=all.slice().sort(function(a,b){return pc(b)-pc(a)}),top=srt.slice(0,3),bot=srt.slice(-3).reverse();
+  var li=function(e){var v=pc(e);return '<div style="display:flex;justify-content:space-between;align-items:baseline;gap:6px;padding:7px 2px;font-size:12px;white-space:nowrap"><span style="overflow:hidden;text-overflow:ellipsis">'+e[0]+'</span><span style="font-weight:600;color:'+(v>0?GRN:v<0?RED:'var(--m)')+'">'+(v>0?'+':v<0?'−':'±')+f1(Math.abs(v))+' %</span></div>'};
+  var HL='<div class="l" style="font-size:9px;letter-spacing:.14em;color:var(--m);text-transform:uppercase;margin-bottom:2px">',
+   colBox='background:#1b1b1b;border-radius:10px;padding:9px 10px;',
+   colO=function(h,items,cs){var fl=cs==='l'?'<i style="position:absolute;top:-6px;left:calc(66.667% - 2px);width:6px;height:6px;background:radial-gradient(circle at 100% 0,transparent 5.5px,#1b1b1b 6px)"></i>':'<i style="position:absolute;top:-6px;left:calc(33.333% - 4px);width:6px;height:6px;background:radial-gradient(circle at 0 0,transparent 5.5px,#1b1b1b 6px)"></i>';return '<div style="'+colBox+'position:relative;'+(cs==='l'?'border-top-left-radius:0;':'border-top-right-radius:0;')+'">'+fl+items+'</div>'},
+   tb='<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">'+colO('Leggyengébb',bot.map(li).join(''),'l')+colO('Legerősebb',top.map(li).join(''),'r')+'</div>';
+  /* edzésenként: a mostani volumen és a különbség az előző ugyanilyen edzéshez (oszlop a típus színével, 50 kg-os rács) */
+  var VV=[];for(var q=1;q<=10;q++)VV.push(q<=ST.c.length?VOL(q):null);var vThis=VV[ST.c.length-c-1],gx='',
+   dS=function(x){return (x>0?'+':x<0?'−':'±')+fm(Math.abs(x))+' kg'},
+   WO=DAYS.filter(function(d){return d.st==='done'&&/Push|Pull|Legs/.test(d.n)}),BASE={Push:7200,Pull:6100,Legs:8800},
+   raw=WO.map(function(d){var ty=/Push/.test(d.n)?'Push':/Pull/.test(d.n)?'Pull':'Legs';return [ty,BASE[ty]*(1+((hsh(d.d)%60)-30)/1000),d]}),rs=raw.reduce(function(a,b){return a+b[1]},0)||1;
+  raw.forEach(function(r){r[1]=r[1]/rs*vThis;r.push(r[1]*(1-(((hsh(r[2].d+'p')+c)%70)-25)/1000))});
+  var DS=raw.map(function(r){return r[1]-r[3]}),pMx=Math.ceil(Math.max.apply(0,DS.concat([0]))/50)*50,nMx=Math.ceil(-Math.min.apply(0,DS.concat([0]))/50)*50,dsc=140/((pMx+nMx)||1),
+   y=22,gY2=y+raw.length*24-6,gst=(pMx+nMx)>600?100:50,gs=(pMx+nMx)>600?200:100;
+  for(var gv=-nMx;gv<=pMx;gv+=gst){var gxp=102+(gv+nMx)*dsc;gx+='<line x1="'+gxp+'" x2="'+gxp+'" y1="14" y2="'+gY2+'" stroke="rgba(255,255,255,'+(gv===0?'.35':'.08')+')"'+(gv===0?'':' stroke-dasharray="2 3"')+'/>'+(gv%gs===0?t(gxp,9,gv===0?'0':(gv>0?'+':'−')+Math.abs(gv),{fs:7.5,c:T,a:'middle'}).replace('<text','<text class="ng"'):'')}
+  raw.forEach(function(r){var d=r[1]-r[3],col=WCc[r[0]]||GOLD,cx2=102+nMx*dsc,w=Math.max(2,Math.abs(d)*dsc);
+   gx+=t(0,y+11,r[0],{fs:11.5,c:col,w:600})+t(44,y+11,r[2].d,{fs:9,c:T});
+   gx+='<rect x="'+(d>=0?cx2:cx2-w)+'" y="'+(y+2)+'" width="'+w+'" height="10" rx="3" fill="'+col+'"/>'+t(252,y+11,fm(r[1]),{fs:9.5,c:'#fff'});
+   gx+=t(340,y+11,dS(d),{fs:9.5,c:d>0?GRN:d<0?RED:T,w:600,a:'end'});y+=24});
+  $('cs1').innerHTML+=tb;
+  $('cs7').innerHTML=S(340,y,gx);
+
+  /* 3. kártya: Push · Pull · Legs változás %-ban (ugyanaz a nézet, mint az edzés napon) */
+  var sv=EX.slice(),h='';
+  [['Push',WD[0]],['Pull',WD[2]],['Legs',WD[1]]].forEach(function(g,gi){EX.splice.apply(EX,[0,EX.length].concat(rows(g[1],c)));
+   var gc=WCc[g[0]]||GOLD;
+   h+=window.__pfeny().replace('<div class="tmh" style="text-align:center">','<div style="display:flex;justify-content:space-between;align-items:baseline;margin:'+(gi?'26px':'0')+' 0 4px"><span style="font-size:20px;font-weight:600;color:'+gc+'">'+g[0]+'</span><span class="tmh" style="display:inline;font-size:20px">').replace(' %</div>',' %</span></div>')});
+  EX.splice.apply(EX,[0,EX.length].concat(sv));$('cs2').innerHTML=h;
+
+  /* 4. kártya: a ciklus rekordjai, csillag a típus színével */
+  var RD=(window.__RD||[]).filter(function(r){return (hsh(r[0])+c)%3===0}),
+   TYC=function(n){var g=GT[GRP[n]]||(/Comb|Guggol|Vádli|Has|Láb|Román|Bolgár/i.test(n)?'Legs':/Lehúz|Evez|Melltámasz|pullover|bicepsz|Kalapács|Face/i.test(n)?'Pull':'Push');return WCc[g]||GOLD};
+  $('cs3').innerHTML=!RD.length?'<div style="text-align:center;color:var(--m);font-size:13px;padding:6px 0">Nincs új rekord</div>':
+   RD.map(function(r,k){return '<div style="display:flex;justify-content:space-between;align-items:baseline;padding:9px 2px;'+(k<RD.length-1?'border-bottom:1px solid var(--f);':'')+'font-size:13px"><span><span style="color:'+TYC(r[0])+';font-size:11px;margin-right:6px">★</span>'+r[0]+'</span><span style="color:'+GOLD+';font-weight:600">'+r[2].split('×')[0].trim()+' kg</span></div>'}).join('');
+
+  /* 5. kártya: vészüzemmód – csak ha volt kimaradás, átcsúszás vagy összevont nap */
+  var bad=cc.miss||cc.car||cc.pz,NA=Math.min(cc.miss,4),VR=RED,LEVEL=['','I. FOKÚ','II. FOKÚ','III. FOKÚ','IV. FOKÚ'][NA],
+   seg='<div style="display:flex;gap:4px;margin-top:10px">';
+  for(var q=1;q<=4;q++)seg+='<span style="flex:1;height:6px;border-radius:2px;background:'+(q<=NA?VR:'rgba(255,255,255,.08)')+(q<=NA&&q===Math.min(NA,4)?';box-shadow:0 0 10px rgba(232,128,111,.7)':'')+'"></span>';
+  seg+='</div>';
+  var ih='<div class="hzw" style="border-radius:12px;padding:3px;background:repeating-linear-gradient(-45deg,'+VR+' 0 8px,#1b1b1b 8px 16px)"><div style="background:#202020;border-radius:10px;padding:14px 14px">'+
+   '<div style="display:flex;align-items:center;justify-content:center;gap:8px;font-size:15px;line-height:1;font-weight:800;letter-spacing:.08em;color:'+VR+'"><span>VÉSZÜZEMMÓD AKTIVÁLVA</span></div>'+
+   '<div style="text-align:center;font-size:14px;color:#fff;font-weight:800;letter-spacing:.14em;margin-top:9px">'+(NA?LEVEL+' RIASZTÁS':'<span style="font-size:12.5px;font-weight:500;letter-spacing:0;color:var(--m)">az előző ciklusból folytatódott</span>')+'</div>'+(NA?seg:'')+
+   '</div></div>';
+  $('cs5').style.display=bad?'':'none';$('cs5').innerHTML=bad?ih:''};
+})();
+
+/* ════ 9. VÉGÉ ════ */
+/* ── Minden pluszos érték zöld (a .ng osztályú elemek kivételével) ── */
+(function(){var GR='#4cc38a',RX=/^\s*[▲↑]?\s*\+\s*[\d,.]/;
+ function g(root){(root.querySelectorAll?root:document).querySelectorAll('*').forEach(function(el){if(el.children.length&&el.tagName!=='text')return;if(el.closest&&el.closest('.ng'))return;var tx=el.textContent;if(!tx||!RX.test(tx))return;
+   if(el.tagName==='text'&&el.children.length){[].forEach.call(el.children,function(c){if(RX.test(c.textContent))c.setAttribute('fill',GR)});return}
+   if(el instanceof SVGElement)el.setAttribute('fill',GR);else el.style.color=GR})}
+ var busy=false;new MutationObserver(function(){if(busy)return;busy=true;requestAnimationFrame(function(){g(document);busy=false})}).observe(document.body,{childList:true,subtree:true,characterData:true});
+ g(document)})();
+
+/* minden kész: az oldal finoman megjelenik */
+setTimeout(function(){setTimeout(function(){document.documentElement.classList.add('ready')},0)},0);
+<\/script>
+<script>
+/* ════ NAVIGÁCIÓ: a kör két oldalán Kontroll és Blokk ikon, ott × vissza a ciklushoz ════ */
+(function(){
+ var er=document.querySelector('.ering'),CR=[].slice.call(er.querySelectorAll('.ncorn'));
+ function go(k){document.body.classList.toggle('sub',k!=='c');document.querySelectorAll('.pane').forEach(function(p){p.classList.toggle('on',p.id==='p-'+k)});window.scrollTo(0,0);setTimeout(place,0)}
+ window.__navgo=go;window.__navplace=function(){place()};
+ CR.forEach(function(d){d.onclick=function(ev){ev.stopPropagation();go(d.dataset.k)}});
+ document.querySelectorAll('.bkx').forEach(function(x){x.onclick=function(){go('c')}});
+ document.querySelectorAll('.bkexit').forEach(function(x){x.onclick=function(){parent.postMessage('fej-close','*')}});
+ /* az ikonok a fejléc és a kör teteje közé, középre kerülnek, a kör szélével egy vonalba */
+ function place(){var sv=document.querySelector('#ering svg');if(!sv||!CR[0].offsetParent)return;var er2=er.getBoundingClientRect(),r=sv.getBoundingClientRect(),S=r.width,big=!!sv.querySelector('path[d*="A142,142"]'),rr=S*(big?142:112)/300,cy=r.top+S/2,top=cy-rr,hd=document.querySelector('#p-c .hdr'),rl=document.getElementById('reclist').getBoundingClientRect(),db=Math.max(hd.getBoundingClientRect().bottom,rl.height>1?rl.bottom:0),gc=(db+top)/2,M=14;
+  CR[0].style.left=(r.left-er2.left+M)+'px';CR[1].style.left=(r.right-er2.left-M-42)+'px';CR.forEach(function(d){d.style.top=(gc-er2.top-21)+'px'})}
+ new MutationObserver(function(){setTimeout(place,0)}).observe(document.getElementById('ering'),{childList:true});window.addEventListener('resize',place);
+ setTimeout(place,0)})();
+<\/script>
+</body></html>
+
 </script>
 </body>
 </html>
